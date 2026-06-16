@@ -2,7 +2,7 @@
 
 **`sqlsync/laravel-sqlsync-filament`**
 
-Filament v3 Admin Panel plugin for [sqlsync/laravel-sqlsync](https://packagist.org/packages/sqlsync/laravel-sqlsync).
+Filament v3-V4-V5 Admin Panel plugin for [sqlsync/laravel-sqlsync](https://packagist.org/packages/sqlsync/laravel-sqlsync).
 
 Adds a full admin panel with live stats, agent monitoring, and record browsing — all auto-refreshing every 30 seconds.
 

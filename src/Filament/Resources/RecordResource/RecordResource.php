@@ -18,13 +18,16 @@ use Filament\Infolists\Components\KeyValueEntry;
 use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ListRecords;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ViewRecord;
+use BackedEnum;
+use Illuminate\Contracts\Support\Htmlable;
 
 class RecordResource extends Resource
 {
     protected static ?string $model = SyncedRecord::class;
 
     // No type hints — compatible with Filament v3/v4/v5
-    public static function getNavigationIcon(): string|\BackedEnum|null{return 'heroicon-o-circle-stack';}
+    public static function getNavigationIcon(): string | BackedEnum | Htmlable | null
+        {return 'heroicon-o-user-group';}
     protected static $navigationSort  = 1;
 
     protected static ?string $navigationLabel  = 'Synced Records';
