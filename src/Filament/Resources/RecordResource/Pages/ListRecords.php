@@ -2,11 +2,11 @@
 
 namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages;
 
-use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\ListRecords as BaseListRecords;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 use SqlSync\FilamentSqlSync\Filament\Widgets\SyncStatsWidget;
 
-class ListRecords extends ListRecords
+class ListRecords extends BaseListRecords
 {
     protected static string $resource = RecordResource::class;
 
