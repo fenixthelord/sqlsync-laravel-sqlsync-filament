@@ -3,11 +3,11 @@
 namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource;
 
 use Filament\Actions\ViewAction;
-use Filament\Infolists\Components\Grid;
 use Filament\Infolists\Components\KeyValueEntry;
-use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
