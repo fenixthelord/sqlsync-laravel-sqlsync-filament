@@ -24,7 +24,7 @@ class RecordResource extends Resource
     protected static ?string $model = SyncedRecord::class;
 
     // No type hints — compatible with Filament v3/v4/v5
-    protected static $navigationIcon  = 'heroicon-o-circle-stack';
+    public static function getNavigationIcon(): string|\BackedEnum|null{return 'heroicon-o-circle-stack';}
     protected static $navigationSort  = 1;
 
     protected static ?string $navigationLabel  = 'Synced Records';
