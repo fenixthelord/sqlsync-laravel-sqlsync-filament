@@ -20,10 +20,13 @@ use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\Pages\ViewAgent;
 class AgentResource extends Resource
 {
     protected static ?string $model = SyncAgent::class;
-    protected static ?string $navigationIcon = 'heroicon-o-computer-desktop';
-    protected static ?string $navigationLabel = 'Agents';
-    protected static ?string $modelLabel = 'Agent';
-    protected static ?int $navigationSort = 2;
+
+    // No type hints — compatible with Filament v3/v4/v5
+    protected static $navigationIcon = 'heroicon-o-computer-desktop';
+    protected static $navigationSort = 2;
+
+    protected static ?string $navigationLabel  = 'Agents';
+    protected static ?string $modelLabel       = 'Agent';
 
     public static function getNavigationGroup(): ?string
     {
@@ -88,7 +91,7 @@ class AgentResource extends Resource
             ])
             ->defaultSort('last_heartbeat', 'desc')
             ->striped()
-            ->poll('30s'); // Auto-refresh every 30 seconds
+            ->poll('30s');
     }
 
     public static function infolist(Infolist $infolist): Infolist

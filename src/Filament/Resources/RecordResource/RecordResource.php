@@ -5,7 +5,6 @@ namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
-use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,11 +22,14 @@ use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ViewRecord;
 class RecordResource extends Resource
 {
     protected static ?string $model = SyncedRecord::class;
-    protected static ?string $navigationIcon = 'heroicon-o-circle-stack';
-    protected static ?string $navigationLabel = 'Synced Records';
-    protected static ?string $modelLabel = 'Record';
+
+    // No type hints — compatible with Filament v3/v4/v5
+    protected static $navigationIcon  = 'heroicon-o-circle-stack';
+    protected static $navigationSort  = 1;
+
+    protected static ?string $navigationLabel  = 'Synced Records';
+    protected static ?string $modelLabel       = 'Record';
     protected static ?string $pluralModelLabel = 'Records';
-    protected static ?int $navigationSort = 1;
 
     public static function getNavigationGroup(): ?string
     {
@@ -174,18 +176,7 @@ class RecordResource extends Resource
         ];
     }
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
-    public static function canEdit($record): bool
-    {
-        return false;
-    }
-
-    public static function canDelete($record): bool
-    {
-        return false;
-    }
+    public static function canCreate(): bool  { return false; }
+    public static function canEdit($record): bool { return false; }
+    public static function canDelete($record): bool { return false; }
 }
