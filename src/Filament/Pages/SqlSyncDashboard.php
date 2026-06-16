@@ -9,12 +9,18 @@ use SqlSync\FilamentSqlSync\Filament\Widgets\RecentSyncLogsWidget;
 
 class SqlSyncDashboard extends Dashboard
 {
-    // No type hints — compatible with Filament v3/v4/v5
-    protected static $navigationIcon  = 'heroicon-o-home';
-    protected static $navigationSort  = 0;
-
     protected static ?string $navigationLabel = 'SqlSync Dashboard';
     protected static ?string $title           = 'SqlSync Overview';
+
+    public static function getNavigationIcon(): string|\BackedEnum|null
+    {
+        return 'heroicon-o-home';
+    }
+
+    public static function getNavigationSort(): ?int
+    {
+        return 0;
+    }
 
     public static function getNavigationGroup(): ?string
     {

@@ -19,14 +19,19 @@ use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\Pages\ViewAgent;
 
 class AgentResource extends Resource
 {
-    protected static ?string $model = SyncAgent::class;
+    protected static ?string $model           = SyncAgent::class;
+    protected static ?string $navigationLabel = 'Agents';
+    protected static ?string $modelLabel      = 'Agent';
 
-    // No type hints — compatible with Filament v3/v4/v5
-    protected static $navigationIcon = 'heroicon-o-computer-desktop';
-    protected static $navigationSort = 2;
+    public static function getNavigationIcon(): string|\BackedEnum|null
+    {
+        return 'heroicon-o-computer-desktop';
+    }
 
-    protected static ?string $navigationLabel  = 'Agents';
-    protected static ?string $modelLabel       = 'Agent';
+    public static function getNavigationSort(): ?int
+    {
+        return 2;
+    }
 
     public static function getNavigationGroup(): ?string
     {
@@ -86,9 +91,7 @@ class AgentResource extends Resource
                     ->label('Company')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->actions([
-                ViewAction::make(),
-            ])
+            ->actions([ViewAction::make()])
             ->defaultSort('last_heartbeat', 'desc')
             ->striped()
             ->poll('30s');
@@ -97,32 +100,25 @@ class AgentResource extends Resource
     public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
-            Section::make('Agent Details')
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextEntry::make('agent_id')->label('Agent ID')->fontFamily('mono')->copyable(),
-                        TextEntry::make('label')->label('Label')->default('Not set'),
-                        TextEntry::make('company_id')->label('Company ID')->default('—'),
-                        TextEntry::make('total_synced')->label('Total Records Synced')->numeric(),
-                    ]),
+            Section::make('Agent Details')->schema([
+                Grid::make(2)->schema([
+                    TextEntry::make('agent_id')->label('Agent ID')->fontFamily('mono')->copyable(),
+                    TextEntry::make('label')->label('Label')->default('Not set'),
+                    TextEntry::make('company_id')->label('Company ID')->default('—'),
+                    TextEntry::make('total_synced')->label('Total Records Synced')->numeric(),
                 ]),
-
-            Section::make('Activity')
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextEntry::make('last_heartbeat')->label('Last Heartbeat')->dateTime()->since(),
-                        TextEntry::make('last_sync_at')->label('Last Sync')->dateTime()->since(),
-                        TextEntry::make('created_at')->label('First Seen')->dateTime(),
-                        TextEntry::make('updated_at')->label('Last Updated')->dateTime(),
-                    ]),
+            ]),
+            Section::make('Activity')->schema([
+                Grid::make(2)->schema([
+                    TextEntry::make('last_heartbeat')->label('Last Heartbeat')->dateTime()->since(),
+                    TextEntry::make('last_sync_at')->label('Last Sync')->dateTime()->since(),
+                    TextEntry::make('created_at')->label('First Seen')->dateTime(),
+                    TextEntry::make('updated_at')->label('Last Updated')->dateTime(),
                 ]),
-
-            Section::make('Metadata')
-                ->schema([
-                    KeyValueEntry::make('meta')->label('Meta')->columnSpanFull(),
-                ])
-                ->collapsible()
-                ->collapsed(),
+            ]),
+            Section::make('Metadata')->schema([
+                KeyValueEntry::make('meta')->label('Meta')->columnSpanFull(),
+            ])->collapsible()->collapsed(),
         ]);
     }
 
