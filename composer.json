@@ -1,0 +1,32 @@
+{
+    "name": "sqlsync/laravel-sqlsync-filament",
+    "description": "Filament v3 Admin Panel plugin for sqlsync/laravel-sqlsync",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Muhammad Khalaf",
+            "email": "contact@sqlsync.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.0|^11.0|^12.0|^13.0",
+        "sqlsync/laravel-sqlsync": "^1.0",
+        "filament/filament": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "SqlSync\\FilamentSqlSync\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SqlSync\\FilamentSqlSync\\SqlSyncFilamentServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
