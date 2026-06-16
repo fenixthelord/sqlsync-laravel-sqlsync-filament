@@ -3,11 +3,11 @@
 namespace SqlSync\FilamentSqlSync\Filament\Resources\AgentResource;
 
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\Grid;
@@ -91,9 +91,9 @@ class AgentResource extends Resource
             ->poll('30s');
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist->schema([
+        return $schema->components([
             Section::make('Agent Details')->schema([
                 Grid::make(2)->schema([
                     TextEntry::make('agent_id')->label('Agent ID')->fontFamily('mono')->copyable(),
@@ -101,7 +101,8 @@ class AgentResource extends Resource
                     TextEntry::make('company_id')->label('Company ID')->default('—'),
                     TextEntry::make('total_synced')->label('Total Records Synced')->numeric(),
                 ]),
-            ]),
+            ])->columnSpanFull(),
+
             Section::make('Activity')->schema([
                 Grid::make(2)->schema([
                     TextEntry::make('last_heartbeat')->label('Last Heartbeat')->dateTime()->since(),
@@ -109,10 +110,11 @@ class AgentResource extends Resource
                     TextEntry::make('created_at')->label('First Seen')->dateTime(),
                     TextEntry::make('updated_at')->label('Last Updated')->dateTime(),
                 ]),
-            ]),
+            ])->columnSpanFull(),
+
             Section::make('Metadata')->schema([
                 KeyValueEntry::make('meta')->label('Meta')->columnSpanFull(),
-            ])->collapsible()->collapsed(),
+            ])->collapsible()->collapsed()->columnSpanFull(),
         ]);
     }
 

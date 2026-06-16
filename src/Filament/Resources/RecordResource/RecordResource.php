@@ -3,13 +3,13 @@
 namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource;
 
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Actions\ViewAction;
-use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\Grid;
@@ -107,24 +107,21 @@ class RecordResource extends Resource
                         'al_ameen' => 'Al-Ameen (الأمين)',
                         'al_bayan' => 'Al-Bayan (البيان)',
                     ]),
-
                 TernaryFilter::make('is_active')
                     ->label('Status')
                     ->trueLabel('Active only')
                     ->falseLabel('Inactive only'),
             ])
-            ->actions([
-                ViewAction::make(),
-            ])
+            ->actions([ViewAction::make()])
             ->bulkActions([])
             ->defaultSort('name')
             ->striped()
             ->paginated([10, 25, 50, 100]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist->schema([
+        return $schema->components([
             Section::make('Basic Information')->schema([
                 Grid::make(3)->schema([
                     TextEntry::make('name')->label('Name')->weight('bold'),
@@ -142,11 +139,11 @@ class RecordResource extends Resource
                     TextEntry::make('is_active')->label('Active')
                         ->formatStateUsing(fn ($state) => $state ? 'Yes' : 'No'),
                 ]),
-            ]),
+            ])->columnSpanFull(),
 
             Section::make('Pricing & Extra Data')->schema([
                 KeyValueEntry::make('extra_data')->label('Extra Data')->columnSpanFull(),
-            ])->collapsible(),
+            ])->collapsible()->columnSpanFull(),
 
             Section::make('Sync Info')->schema([
                 Grid::make(3)->schema([
@@ -154,7 +151,7 @@ class RecordResource extends Resource
                     TextEntry::make('synced_at')->label('Last Sync')->dateTime(),
                     TextEntry::make('source_guid')->label('Source GUID'),
                 ]),
-            ])->collapsible()->collapsed(),
+            ])->collapsible()->collapsed()->columnSpanFull(),
         ]);
     }
 
