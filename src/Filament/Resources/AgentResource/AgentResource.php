@@ -2,7 +2,6 @@
 
 namespace SqlSync\FilamentSqlSync\Filament\Resources\AgentResource;
 
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -36,11 +35,6 @@ class AgentResource extends Resource
     public static function getNavigationGroup(): ?string
     {
         return app(\SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin::class)->getNavigationGroup();
-    }
-
-    public static function form(Form $form): Form
-    {
-        return $form->schema([]);
     }
 
     public static function table(Table $table): Table

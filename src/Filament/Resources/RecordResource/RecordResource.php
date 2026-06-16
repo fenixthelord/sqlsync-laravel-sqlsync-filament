@@ -2,7 +2,6 @@
 
 namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource;
 
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -21,12 +20,11 @@ use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ViewRecord;
 
 class RecordResource extends Resource
 {
-    protected static ?string $model = SyncedRecord::class;
-    protected static ?string $navigationLabel  = 'Synced Records';
-    protected static ?string $modelLabel       = 'Record';
+    protected static ?string $model           = SyncedRecord::class;
+    protected static ?string $navigationLabel = 'Synced Records';
+    protected static ?string $modelLabel      = 'Record';
     protected static ?string $pluralModelLabel = 'Records';
 
-    // Use methods instead of properties for Filament v3/v4/v5 compatibility
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
         return 'heroicon-o-circle-stack';
@@ -40,11 +38,6 @@ class RecordResource extends Resource
     public static function getNavigationGroup(): ?string
     {
         return app(\SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin::class)->getNavigationGroup();
-    }
-
-    public static function form(Form $form): Form
-    {
-        return $form->schema([]);
     }
 
     public static function table(Table $table): Table
@@ -131,47 +124,38 @@ class RecordResource extends Resource
 
     public static function infolist(Infolist $infolist): Infolist
     {
-        return $infolist
-            ->schema([
-                Section::make('Basic Information')
-                    ->schema([
-                        Grid::make(3)->schema([
-                            TextEntry::make('name')->label('Name')->weight('bold'),
-                            TextEntry::make('latin_name')->label('Latin Name'),
-                            TextEntry::make('preset')->label('Preset')->badge(),
-                        ]),
-                        Grid::make(3)->schema([
-                            TextEntry::make('code')->label('Code'),
-                            TextEntry::make('barcode')->label('Barcode'),
-                            TextEntry::make('unit')->label('Unit'),
-                        ]),
-                        Grid::make(3)->schema([
-                            TextEntry::make('group_name')->label('Group'),
-                            TextEntry::make('quantity')->label('Quantity')->numeric(),
-                            TextEntry::make('is_active')->label('Active')
-                                ->formatStateUsing(fn ($state) => $state ? 'Yes' : 'No'),
-                        ]),
-                    ]),
+        return $infolist->schema([
+            Section::make('Basic Information')->schema([
+                Grid::make(3)->schema([
+                    TextEntry::make('name')->label('Name')->weight('bold'),
+                    TextEntry::make('latin_name')->label('Latin Name'),
+                    TextEntry::make('preset')->label('Preset')->badge(),
+                ]),
+                Grid::make(3)->schema([
+                    TextEntry::make('code')->label('Code'),
+                    TextEntry::make('barcode')->label('Barcode'),
+                    TextEntry::make('unit')->label('Unit'),
+                ]),
+                Grid::make(3)->schema([
+                    TextEntry::make('group_name')->label('Group'),
+                    TextEntry::make('quantity')->label('Quantity')->numeric(),
+                    TextEntry::make('is_active')->label('Active')
+                        ->formatStateUsing(fn ($state) => $state ? 'Yes' : 'No'),
+                ]),
+            ]),
 
-                Section::make('Pricing & Extra Data')
-                    ->schema([
-                        KeyValueEntry::make('extra_data')
-                            ->label('Extra Data')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible(),
+            Section::make('Pricing & Extra Data')->schema([
+                KeyValueEntry::make('extra_data')->label('Extra Data')->columnSpanFull(),
+            ])->collapsible(),
 
-                Section::make('Sync Info')
-                    ->schema([
-                        Grid::make(3)->schema([
-                            TextEntry::make('agent_id')->label('Agent ID'),
-                            TextEntry::make('synced_at')->label('Last Sync')->dateTime(),
-                            TextEntry::make('source_guid')->label('Source GUID'),
-                        ]),
-                    ])
-                    ->collapsible()
-                    ->collapsed(),
-            ]);
+            Section::make('Sync Info')->schema([
+                Grid::make(3)->schema([
+                    TextEntry::make('agent_id')->label('Agent ID'),
+                    TextEntry::make('synced_at')->label('Last Sync')->dateTime(),
+                    TextEntry::make('source_guid')->label('Source GUID'),
+                ]),
+            ])->collapsible()->collapsed(),
+        ]);
     }
 
     public static function getPages(): array
