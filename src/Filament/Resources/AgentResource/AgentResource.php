@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\Pages\ListAgents;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\Pages\ViewAgent;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
@@ -52,7 +53,7 @@ class AgentResource extends Resource
         return SqlSyncFilamentPlugin::get()->isAuthorized();
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 

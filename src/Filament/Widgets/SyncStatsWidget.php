@@ -44,7 +44,7 @@ class SyncStatsWidget extends BaseWidget
 
         if ($plugin->isFeatureEnabled('records')) {
             $result[] = Stat::make('Total Records', number_format((int) ($stats['total'] ?? 0)))
-                ->description(($stats['active'] ?? 0) . ' active')
+                ->description(($stats['active'] ?? 0).' active')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success')
                 ->icon('heroicon-o-circle-stack');
@@ -59,7 +59,7 @@ class SyncStatsWidget extends BaseWidget
         }
 
         if ($plugin->isFeatureEnabled('agents')) {
-            $result[] = Stat::make('Agents Online', ($stats['agents_online'] ?? 0) . ' / ' . ($stats['agents_total'] ?? 0))
+            $result[] = Stat::make('Agents Online', ($stats['agents_online'] ?? 0).' / '.($stats['agents_total'] ?? 0))
                 ->description(($stats['agents_online'] ?? 0) > 0 ? 'Syncing now' : 'No agents online')
                 ->descriptionIcon(($stats['agents_online'] ?? 0) > 0 ? 'heroicon-m-signal' : 'heroicon-m-signal-slash')
                 ->color(($stats['agents_online'] ?? 0) > 0 ? 'success' : 'danger')

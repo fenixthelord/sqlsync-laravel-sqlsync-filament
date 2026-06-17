@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace SqlSync\FilamentSqlSync\Console;
 
+use Composer\InstalledVersions;
+use Filament\Panel;
 use Illuminate\Console\Command;
+use SqlSync\LaravelSqlSync\SqlSyncServiceProvider;
 
 class InstallFilamentCommand extends Command
 {
@@ -16,7 +19,7 @@ class InstallFilamentCommand extends Command
     {
         $this->info('Installing SqlSync Filament Plugin...');
 
-        if (! class_exists(\Filament\Panel::class)) {
+        if (! class_exists(Panel::class)) {
             $this->error('Filament is not installed.');
             $this->line('Run: <comment>composer require filament/filament</comment>');
             $this->line('Then: <comment>php artisan filament:install --panels</comment>');
@@ -24,7 +27,7 @@ class InstallFilamentCommand extends Command
             return;
         }
 
-        $version = \Composer\InstalledVersions::getVersion('filament/filament') ?? '0';
+        $version = InstalledVersions::getVersion('filament/filament') ?? '0';
         $major = (int) $version;
 
         if ($major < 4) {
@@ -36,7 +39,7 @@ class InstallFilamentCommand extends Command
 
         $this->line("  <fg=green>✓</> Filament v{$version} detected");
 
-        if (! class_exists(\SqlSync\LaravelSqlSync\SqlSyncServiceProvider::class)) {
+        if (! class_exists(SqlSyncServiceProvider::class)) {
             $this->error('sqlsync/laravel-sqlsync is not installed.');
             $this->line('Run: <comment>composer require sqlsync/laravel-sqlsync</comment>');
             $this->line('Then: <comment>php artisan sqlsync:install</comment>');

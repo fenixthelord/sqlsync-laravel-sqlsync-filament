@@ -16,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ListRecords;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ViewRecord;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
@@ -56,7 +57,7 @@ class RecordResource extends Resource
         return SqlSyncFilamentPlugin::get()->isAuthorized();
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 
