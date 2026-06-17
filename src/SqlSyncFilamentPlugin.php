@@ -32,6 +32,8 @@ class SqlSyncFilamentPlugin implements Plugin
 
     protected ?Closure $logsQuery = null;
 
+    protected ?Closure $mappingsQuery = null;
+
     protected ?Closure $statsCacheKeyCallback = null;
 
     public static function make(): static
