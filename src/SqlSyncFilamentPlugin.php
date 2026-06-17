@@ -11,6 +11,7 @@ use Filament\Panel;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\FieldMappingResource;
 
 class SqlSyncFilamentPlugin implements Plugin
 {
@@ -196,7 +197,7 @@ class SqlSyncFilamentPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
-        $resources = [];
+        $resources[] = FieldMappingResource::class;
         $pages = [];
 
         if ($this->isFeatureEnabled('records')) {
