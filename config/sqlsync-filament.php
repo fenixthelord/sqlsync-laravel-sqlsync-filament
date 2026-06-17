@@ -24,6 +24,7 @@ return [
         'records' => true,
         'agents' => true,
         'logs' => true,
+        'mappings' => true,
     ],
 
     /*
