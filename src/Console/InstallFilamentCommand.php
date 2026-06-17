@@ -31,13 +31,13 @@ class InstallFilamentCommand extends Command
         $major = (int) $version;
 
         if ($major < 4) {
-            $this->error("Filament v{$major} is not supported. This plugin requires Filament v4 or v5.");
+            $this->error('Filament v'.$major.' is not supported. This plugin requires Filament v4 or v5.');
             $this->line('Upgrade: <comment>composer require filament/filament -W</comment>');
 
             return;
         }
 
-        $this->line("  <fg=green>✓</> Filament v{$version} detected");
+        $this->line('  <fg=green>✓</> Filament v'.$version.' detected');
 
         if (! class_exists(SqlSyncServiceProvider::class)) {
             $this->error('sqlsync/laravel-sqlsync is not installed.');
@@ -69,6 +69,6 @@ class InstallFilamentCommand extends Command
         $this->newLine();
         $this->line('Optional — Multi-tenancy:');
         $this->line("      ->modifyRecordsQueryUsing(fn (\$q) => \$q->where('company_id', auth()->user()->company_id))");
-        $this->line("      ->statsCacheKeyUsing(fn (\$user) => \"sqlsync.stats.{\$user->company_id}\")");
+        $this->line("      ->statsCacheKeyUsing(fn (\$user) => 'sqlsync.stats.'.\$user->company_id)");
     }
 }
