@@ -1,23 +1,40 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SqlSync\FilamentSqlSync\Filament\Widgets;
 
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Models\SyncLog;
 
 class RecentSyncLogsWidget extends BaseWidget
 {
     protected static ?string $heading = 'Recent Sync Activity';
+
     protected static ?int $sort = 3;
+
     protected int|string|array $columnSpan = 'full';
+
+    public static function canView(): bool
+    {
+        return SqlSyncFilamentPlugin::get()->isAuthorized();
+    }
 
     public function table(Table $table): Table
     {
+        $plugin = SqlSyncFilamentPlugin::get();
+        $limit  = (int) config('sqlsync-filament.recent_logs_limit', 20);
+        $query  = SyncLog::query()->orderByDesc('synced_at')->limit($limit);
+
+        if ($fn = $plugin->getLogsQuery()) {
+            $query = $fn($query);
+        }
+
         return $table
-            ->query(SyncLog::query()->orderByDesc('synced_at')->limit(20))
+            ->query($query)
             ->columns([
                 TextColumn::make('agent_id')
                     ->label('Agent')
@@ -27,7 +44,7 @@ class RecentSyncLogsWidget extends BaseWidget
                 TextColumn::make('preset')
                     ->label('Preset')
                     ->badge()
-                    ->color(fn ($state) => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'al_ameen' => 'success',
                         'al_bayan' => 'warning',
                         default    => 'gray',
@@ -51,7 +68,7 @@ class RecentSyncLogsWidget extends BaseWidget
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn ($state) => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'success' => 'success',
                         'error'   => 'danger',
                         default   => 'gray',
@@ -63,6 +80,6 @@ class RecentSyncLogsWidget extends BaseWidget
                     ->since(),
             ])
             ->paginated(false)
-            ->poll('30s');
+            ->poll(config('sqlsync-filament.polling_interval', '30s') ?: null);
     }
 }

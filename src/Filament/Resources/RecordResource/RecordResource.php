@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource;
 
 use Filament\Actions\ViewAction;
@@ -16,16 +18,14 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ListRecords;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages\ViewRecord;
+use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 
 class RecordResource extends Resource
 {
-    protected static ?string $model = SyncedRecord::class;
-
-    protected static ?string $navigationLabel = 'Synced Records';
-
-    protected static ?string $modelLabel = 'Record';
-
+    protected static ?string $model            = SyncedRecord::class;
+    protected static ?string $navigationLabel  = 'Synced Records';
+    protected static ?string $modelLabel       = 'Record';
     protected static ?string $pluralModelLabel = 'Records';
 
     public static function getNavigationIcon(): string|\BackedEnum|null
@@ -40,13 +40,45 @@ class RecordResource extends Resource
 
     public static function getNavigationGroup(): ?string
     {
-        return app(
-            \SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin::class
-        )->getNavigationGroup();
+        return SqlSyncFilamentPlugin::get()->getNavigationGroup();
+    }
+
+    public static function canViewAny(): bool
+    {
+        return SqlSyncFilamentPlugin::get()->isAuthorized();
+    }
+
+    public static function canView($record): bool
+    {
+        return SqlSyncFilamentPlugin::get()->isAuthorized();
+    }
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if ($fn = SqlSyncFilamentPlugin::get()->getRecordsQuery()) {
+            $query = $fn($query);
+        }
+
+        return $query;
     }
 
     public static function table(Table $table): Table
     {
+        // Preset options — dynamic from config
+        $presetOptions = collect(config('sqlsync.presets', []))
+            ->mapWithKeys(fn ($class, $key) => [$key => ucwords(str_replace('_', ' ', $key))])
+            ->toArray();
+
+        // Fallback if no presets in config yet
+        if (empty($presetOptions)) {
+            $presetOptions = [
+                'al_ameen' => 'Al-Ameen (الأمين)',
+                'al_bayan' => 'Al-Bayan (البيان)',
+            ];
+        }
+
         return $table
             ->columns([
                 TextColumn::make('name')
@@ -75,10 +107,10 @@ class RecordResource extends Resource
                 TextColumn::make('preset')
                     ->label('Preset')
                     ->badge()
-                    ->color(fn ($state): string => match ($state) {
+                    ->color(fn (string $state): string => match ($state) {
                         'al_ameen' => 'success',
                         'al_bayan' => 'warning',
-                        default => 'gray',
+                        default    => 'gray',
                     }),
 
                 TextColumn::make('group_name')
@@ -107,12 +139,7 @@ class RecordResource extends Resource
                     ->toggleable(),
             ])
             ->filters([
-                SelectFilter::make('preset')
-                    ->options([
-                        'al_ameen' => 'Al-Ameen (الأمين)',
-                        'al_bayan' => 'Al-Bayan (البيان)',
-                    ]),
-
+                SelectFilter::make('preset')->options($presetOptions),
                 TernaryFilter::make('is_active')
                     ->label('Status')
                     ->trueLabel('Active only')
@@ -128,104 +155,58 @@ class RecordResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Section::make('Basic Information')
-                    ->schema([
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('name')
-                                    ->label('Name')
-                                    ->weight('bold'),
+        return $schema->components([
+            Section::make('Basic Information')
+                ->schema([
+                    Grid::make(3)->schema([
+                        TextEntry::make('name')->label('Name')->weight('bold'),
+                        TextEntry::make('latin_name')->label('Latin Name'),
+                        TextEntry::make('preset')->label('Preset')->badge(),
+                    ]),
+                    Grid::make(3)->schema([
+                        TextEntry::make('code')->label('Code'),
+                        TextEntry::make('barcode')->label('Barcode'),
+                        TextEntry::make('unit')->label('Unit'),
+                    ]),
+                    Grid::make(3)->schema([
+                        TextEntry::make('group_name')->label('Group'),
+                        TextEntry::make('quantity')->label('Quantity')->numeric(),
+                        TextEntry::make('is_active')->label('Active')
+                            ->formatStateUsing(fn ($state): string => $state ? 'Yes' : 'No'),
+                    ]),
+                ])
+                ->columnSpanFull(),
 
-                                TextEntry::make('latin_name')
-                                    ->label('Latin Name'),
+            Section::make('Pricing & Extra Data')
+                ->schema([
+                    KeyValueEntry::make('extra_data')->label('Extra Data')->columnSpanFull(),
+                ])
+                ->collapsible()
+                ->columnSpanFull(),
 
-                                TextEntry::make('preset')
-                                    ->label('Preset')
-                                    ->badge(),
-                            ]),
-
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('code')
-                                    ->label('Code'),
-
-                                TextEntry::make('barcode')
-                                    ->label('Barcode'),
-
-                                TextEntry::make('unit')
-                                    ->label('Unit'),
-                            ]),
-
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('group_name')
-                                    ->label('Group'),
-
-                                TextEntry::make('quantity')
-                                    ->label('Quantity')
-                                    ->numeric(),
-
-                                TextEntry::make('is_active')
-                                    ->label('Active')
-                                    ->formatStateUsing(
-                                        fn ($state): string => $state ? 'Yes' : 'No'
-                                    ),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
-
-                Section::make('Pricing & Extra Data')
-                    ->schema([
-                        KeyValueEntry::make('extra_data')
-                            ->label('Extra Data')
-                            ->columnSpanFull(),
-                    ])
-                    ->collapsible()
-                    ->columnSpanFull(),
-
-                Section::make('Sync Info')
-                    ->schema([
-                        Grid::make(3)
-                            ->schema([
-                                TextEntry::make('agent_id')
-                                    ->label('Agent ID'),
-
-                                TextEntry::make('synced_at')
-                                    ->label('Last Sync')
-                                    ->dateTime(),
-
-                                TextEntry::make('source_guid')
-                                    ->label('Source GUID'),
-                            ]),
-                    ])
-                    ->collapsible()
-                    ->collapsed()
-                    ->columnSpanFull(),
-            ]);
+            Section::make('Sync Info')
+                ->schema([
+                    Grid::make(3)->schema([
+                        TextEntry::make('agent_id')->label('Agent ID'),
+                        TextEntry::make('synced_at')->label('Last Sync')->dateTime(),
+                        TextEntry::make('source_guid')->label('Source GUID'),
+                    ]),
+                ])
+                ->collapsible()
+                ->collapsed()
+                ->columnSpanFull(),
+        ]);
     }
 
     public static function getPages(): array
     {
         return [
             'index' => ListRecords::route('/'),
-            'view' => ViewRecord::route('/{record}'),
+            'view'  => ViewRecord::route('/{record}'),
         ];
     }
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
-    public static function canEdit($record): bool
-    {
-        return false;
-    }
-
-    public static function canDelete($record): bool
-    {
-        return false;
-    }
+    public static function canCreate(): bool { return false; }
+    public static function canEdit($record): bool { return false; }
+    public static function canDelete($record): bool { return false; }
 }

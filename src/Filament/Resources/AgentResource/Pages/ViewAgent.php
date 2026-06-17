@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\Pages;
 
 use Filament\Resources\Pages\ViewRecord;

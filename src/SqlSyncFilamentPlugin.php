@@ -1,25 +1,59 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SqlSync\FilamentSqlSync;
 
+use Closure;
 use Filament\Contracts\Plugin;
+use Filament\Facades\Filament;
 use Filament\Panel;
-use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
-use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
-use SqlSync\FilamentSqlSync\Filament\Widgets\SyncStatsWidget;
-use SqlSync\FilamentSqlSync\Filament\Widgets\AgentsOnlineWidget;
-use SqlSync\FilamentSqlSync\Filament\Widgets\RecentSyncLogsWidget;
+use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 
 class SqlSyncFilamentPlugin implements Plugin
 {
-    protected bool $showDashboard = true;
-    protected bool $showAgents    = true;
-    protected bool $showLogs      = true;
-    protected string $navigationGroup = 'SqlSync';
+    // ── Feature flags (null = read from config) ──────────────────────────────
+    protected ?bool $showDashboard = null;
+    protected ?bool $showRecords   = null;
+    protected ?bool $showAgents    = null;
+    protected ?bool $showLogs      = null;
 
+    // ── Navigation ────────────────────────────────────────────────────────────
+    protected ?string $navigationGroup = null;
+
+    // ── Authorization ─────────────────────────────────────────────────────────
+    protected ?Closure $authCallback = null;
+
+    // ── Query Scopes ──────────────────────────────────────────────────────────
+    protected ?Closure $recordsQuery = null;
+    protected ?Closure $agentsQuery  = null;
+    protected ?Closure $logsQuery    = null;
+
+    // ── Cache ─────────────────────────────────────────────────────────────────
+    protected ?Closure $statsCacheKeyCallback = null;
+
+    // ── Factory ───────────────────────────────────────────────────────────────
     public static function make(): static
     {
+        return app(static::class);
+    }
+
+    /**
+     * Retrieve the Plugin instance registered in the current Filament Panel.
+     * Falls back to a fresh instance (e.g. during artisan / tests).
+     */
+    public static function get(): static
+    {
+        $panel = Filament::getCurrentPanel();
+
+        if ($panel !== null && $panel->hasPlugin('sqlsync')) {
+            /** @var static $plugin */
+            $plugin = $panel->getPlugin('sqlsync');
+            return $plugin;
+        }
+
         return app(static::class);
     }
 
@@ -28,11 +62,17 @@ class SqlSyncFilamentPlugin implements Plugin
         return 'sqlsync';
     }
 
-    // ── Fluent Configuration ────────────────────────────────────────────────
+    // ── Fluent API ─────────────────────────────────────────────────────────────
 
     public function withDashboard(bool $show = true): static
     {
         $this->showDashboard = $show;
+        return $this;
+    }
+
+    public function withRecords(bool $show = true): static
+    {
+        $this->showRecords = $show;
         return $this;
     }
 
@@ -54,37 +94,147 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this;
     }
 
-    // ── Register with Filament Panel ────────────────────────────────────────
-
-    public function register(Panel $panel): void
+    /**
+     * Authorization callback — receives the authenticated user.
+     * Return true to allow access.
+     *
+     * Example:
+     *   ->authorizeUsing(fn ($user) => $user->hasRole('admin'))
+     */
+    public function authorizeUsing(Closure $callback): static
     {
-        $resources = [RecordResource::class];
-        $pages     = [];
-        $widgets   = [SyncStatsWidget::class];
-
-        if ($this->showAgents) {
-            $resources[] = AgentResource::class;
-            $widgets[]   = AgentsOnlineWidget::class;
-        }
-
-        if ($this->showDashboard) {
-            $pages[] = SqlSyncDashboard::class;
-        }
-
-        if ($this->showLogs) {
-            $widgets[] = RecentSyncLogsWidget::class;
-        }
-
-        $panel
-            ->resources($resources)
-            ->pages($pages)
-            ->widgets($widgets);
+        $this->authCallback = $callback;
+        return $this;
     }
 
-    public function boot(Panel $panel): void {}
+    /**
+     * Scope the Records query — useful for multi-tenancy.
+     */
+    public function modifyRecordsQueryUsing(Closure $callback): static
+    {
+        $this->recordsQuery = $callback;
+        return $this;
+    }
+
+    public function modifyAgentsQueryUsing(Closure $callback): static
+    {
+        $this->agentsQuery = $callback;
+        return $this;
+    }
+
+    public function modifyLogsQueryUsing(Closure $callback): static
+    {
+        $this->logsQuery = $callback;
+        return $this;
+    }
+
+    /**
+     * Custom cache key for stats — REQUIRED when using query scopes with multi-tenancy
+     * to prevent data leaking between tenants.
+     *
+     * Example:
+     *   ->statsCacheKeyUsing(fn ($user) => "sqlsync.stats.{$user->company_id}")
+     */
+    public function statsCacheKeyUsing(Closure $callback): static
+    {
+        $this->statsCacheKeyCallback = $callback;
+        return $this;
+    }
+
+    // ── Getters ────────────────────────────────────────────────────────────────
 
     public function getNavigationGroup(): string
     {
-        return $this->navigationGroup;
+        return $this->navigationGroup
+            ?? config('sqlsync-filament.navigation_group', 'SqlSync');
     }
+
+    public function isAuthorized(): bool
+    {
+        if ($this->authCallback === null) {
+            return true;
+        }
+
+        return (bool) ($this->authCallback)(auth()->user());
+    }
+
+    public function getRecordsQuery(): ?Closure
+    {
+        return $this->recordsQuery;
+    }
+
+    public function getAgentsQuery(): ?Closure
+    {
+        return $this->agentsQuery;
+    }
+
+    public function getLogsQuery(): ?Closure
+    {
+        return $this->logsQuery;
+    }
+
+    /**
+     * Whether stats should be cached.
+     * Returns false when any query scope is active without a custom cache key,
+     * to prevent data leaking between tenants.
+     */
+    public function shouldCacheStats(): bool
+    {
+        if ($this->statsCacheKeyCallback !== null) {
+            return true;
+        }
+
+        return $this->recordsQuery === null
+            && $this->agentsQuery === null
+            && $this->logsQuery === null;
+    }
+
+    public function resolveStatsCacheKey(): string
+    {
+        if ($this->statsCacheKeyCallback !== null) {
+            return (string) ($this->statsCacheKeyCallback)(auth()->user());
+        }
+
+        return 'sqlsync.dashboard.stats';
+    }
+
+    public function isFeatureEnabled(string $feature): bool
+    {
+        return match ($feature) {
+            'dashboard' => $this->showDashboard ?? (bool) config('sqlsync-filament.features.dashboard', true),
+            'records'   => $this->showRecords   ?? (bool) config('sqlsync-filament.features.records',   true),
+            'agents'    => $this->showAgents    ?? (bool) config('sqlsync-filament.features.agents',    true),
+            'logs'      => $this->showLogs      ?? (bool) config('sqlsync-filament.features.logs',      true),
+            default     => false,
+        };
+    }
+
+    // ── Register with Filament Panel ───────────────────────────────────────────
+
+    public function register(Panel $panel): void
+    {
+        $resources = [];
+        $pages     = [];
+
+        if ($this->isFeatureEnabled('records')) {
+            $resources[] = RecordResource::class;
+        }
+
+        if ($this->isFeatureEnabled('agents')) {
+            $resources[] = AgentResource::class;
+        }
+
+        if ($this->isFeatureEnabled('dashboard')) {
+            $pages[] = SqlSyncDashboard::class;
+        }
+
+        // Widgets are NOT registered on the panel to avoid showing them
+        // on the native Filament Dashboard. They are loaded explicitly by
+        // SqlSyncDashboard::getWidgets() and RecordResource ListRecords header.
+        $panel
+            ->resources($resources)
+            ->pages($pages);
+    }
+
+    public function boot(Panel $panel): void {}
 }

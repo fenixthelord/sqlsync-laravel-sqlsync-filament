@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\Pages;
 
 use Filament\Resources\Pages\ListRecords as BaseListRecords;
@@ -12,9 +14,7 @@ class ListRecords extends BaseListRecords
 
     protected function getHeaderWidgets(): array
     {
-        return [
-            SyncStatsWidget::class,
-        ];
+        return [SyncStatsWidget::class];
     }
 
     protected function getHeaderActions(): array

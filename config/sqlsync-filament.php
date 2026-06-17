@@ -1,25 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 return [
+
     /*
     |--------------------------------------------------------------------------
-    | Navigation Group
+    | Navigation
     |--------------------------------------------------------------------------
-    | The navigation group label shown in the Filament sidebar.
-    |
     */
     'navigation_group' => 'SqlSync',
+    'navigation_icon'  => 'heroicon-o-arrow-path-rounded-square',
 
     /*
     |--------------------------------------------------------------------------
     | Features
     |--------------------------------------------------------------------------
-    | Enable or disable individual sections of the plugin.
-    |
+    | Fluent API on the Plugin takes priority over these values.
     */
     'features' => [
         'dashboard' => true,
+        'records'   => true,
         'agents'    => true,
         'logs'      => true,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Performance
+    |--------------------------------------------------------------------------
+    */
+    'polling_interval'         => '30s',  // null to disable polling
+    'online_threshold_minutes' => 5,
+    'recent_logs_limit'        => 20,
+    'stats_cache_seconds'      => 20,
+
 ];

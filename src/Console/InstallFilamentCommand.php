@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace SqlSync\FilamentSqlSync\Console;
 
 use Illuminate\Console\Command;
@@ -15,11 +17,23 @@ class InstallFilamentCommand extends Command
 
         // Check Filament is installed
         if (! class_exists(\Filament\Panel::class)) {
-            $this->error('Filament v3 is not installed.');
-            $this->line('Run: <comment>composer require filament/filament:"^3.0"</comment>');
+            $this->error('Filament is not installed.');
+            $this->line('Run: <comment>composer require filament/filament</comment>');
             $this->line('Then: <comment>php artisan filament:install --panels</comment>');
             return;
         }
+
+        // Check Filament version — requires v4 or v5
+        $version = \Composer\InstalledVersions::getVersion('filament/filament') ?? '0';
+        $major   = (int) $version;
+
+        if ($major < 4) {
+            $this->error("Filament v{$major} is not supported. This plugin requires Filament v4 or v5.");
+            $this->line('Upgrade: <comment>composer require filament/filament -W</comment>');
+            return;
+        }
+
+        $this->line("  <fg=green>✓</> Filament v{$version} detected");
 
         // Check base package is installed
         if (! class_exists(\SqlSync\LaravelSqlSync\SqlSyncServiceProvider::class)) {
@@ -28,6 +42,8 @@ class InstallFilamentCommand extends Command
             $this->line('Then: <comment>php artisan sqlsync:install</comment>');
             return;
         }
+
+        $this->line('  <fg=green>✓</> sqlsync/laravel-sqlsync detected');
 
         // Publish config
         $this->callSilently('vendor:publish', ['--tag' => 'sqlsync-filament-config']);
@@ -42,10 +58,14 @@ class InstallFilamentCommand extends Command
         $this->newLine();
         $this->line('  ->plugins([');
         $this->line('      SqlSyncFilamentPlugin::make()');
-        $this->line('          ->withDashboard()');
-        $this->line('          ->withAgents()');
-        $this->line('          ->withLogs()');
-        $this->line('          ->navigationGroup(\'SqlSync\'),');
+        $this->line("          ->navigationGroup('SqlSync'),");
         $this->line('  ])');
+        $this->newLine();
+        $this->line('Optional — Authorization:');
+        $this->line("      ->authorizeUsing(fn (\$user) => \$user->hasRole('admin'))");
+        $this->newLine();
+        $this->line('Optional — Multi-tenancy:');
+        $this->line("      ->modifyRecordsQueryUsing(fn (\$q) => \$q->where('company_id', auth()->user()->company_id))");
+        $this->line("      ->statsCacheKeyUsing(fn (\$user) => \"sqlsync.stats.{\$user->company_id}\")");
     }
 }
