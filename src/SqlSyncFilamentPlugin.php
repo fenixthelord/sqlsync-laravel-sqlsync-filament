@@ -211,6 +211,10 @@ class SqlSyncFilamentPlugin implements Plugin
             $pages[] = SqlSyncDashboard::class;
         }
 
+        if ($this->isFeatureEnabled('mappings')) {
+            $resources[] = FieldMappingResource::class;
+        }
+
         $panel
             ->resources($resources)
             ->pages($pages);
