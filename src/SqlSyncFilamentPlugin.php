@@ -34,6 +34,8 @@ class SqlSyncFilamentPlugin implements Plugin
 
     protected ?Closure $mappingsQuery = null;
 
+    protected ?bool $showMappings = null;
+
     protected ?Closure $statsCacheKeyCallback = null;
 
     public static function make(): static
@@ -187,6 +189,7 @@ class SqlSyncFilamentPlugin implements Plugin
             'records' => $this->showRecords ?? (bool) config('sqlsync-filament.features.records', true),
             'agents' => $this->showAgents ?? (bool) config('sqlsync-filament.features.agents', true),
             'logs' => $this->showLogs ?? (bool) config('sqlsync-filament.features.logs', true),
+            'mappings' => $this->showMappings ?? (bool) config('sqlsync-filament.features.mappings', true),
             default => false,
         };
     }
@@ -212,6 +215,22 @@ class SqlSyncFilamentPlugin implements Plugin
             ->resources($resources)
             ->pages($pages);
     }
+
+    public function modifyMappingsQueryUsing(Closure $callback): static
+{
+    $this->mappingsQuery = $callback;
+    return $this;
+}
+    public function withMappings(bool $show = true): static
+{
+    $this->showMappings = $show;
+    return $this;
+}
+
+public function getMappingsQuery(): ?Closure
+{
+    return $this->mappingsQuery;
+}
 
     public function boot(Panel $panel): void {}
 }
