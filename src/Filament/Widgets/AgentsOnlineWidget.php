@@ -27,7 +27,7 @@ class AgentsOnlineWidget extends BaseWidget
     public function table(Table $table): Table
     {
         $plugin = SqlSyncFilamentPlugin::get();
-        $query  = SyncAgent::query()->orderByDesc('last_heartbeat');
+        $query = SyncAgent::query()->orderByDesc('last_heartbeat');
 
         if ($fn = $plugin->getAgentsQuery()) {
             $query = $fn($query);

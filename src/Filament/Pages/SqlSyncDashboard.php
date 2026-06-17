@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace SqlSync\FilamentSqlSync\Filament\Pages;
 
 use Filament\Pages\Dashboard;
-use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\FilamentSqlSync\Filament\Widgets\AgentsOnlineWidget;
 use SqlSync\FilamentSqlSync\Filament\Widgets\RecentSyncLogsWidget;
 use SqlSync\FilamentSqlSync\Filament\Widgets\SyncStatsWidget;
+use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 
 class SqlSyncDashboard extends Dashboard
 {
-    // Stable slug — does not conflict with native Filament dashboard "/"
     protected static ?string $slug = 'sql-sync-dashboard';
 
     protected static string $routePath = '/sqlsync';
@@ -41,14 +40,11 @@ class SqlSyncDashboard extends Dashboard
         return SqlSyncFilamentPlugin::get()->isAuthorized();
     }
 
-    // Plugin is the single source of truth — widgets are loaded here only,
-    // not via Panel::widgets(), so they won't appear on the native Dashboard.
     public function getWidgets(): array
     {
-        $plugin  = SqlSyncFilamentPlugin::get();
+        $plugin = SqlSyncFilamentPlugin::get();
         $widgets = [];
 
-        // Only show SyncStatsWidget when at least one feature has stats to display
         $hasStats = $plugin->isFeatureEnabled('records')
             || $plugin->isFeatureEnabled('agents')
             || $plugin->isFeatureEnabled('logs');

@@ -23,9 +23,12 @@ use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 
 class RecordResource extends Resource
 {
-    protected static ?string $model            = SyncedRecord::class;
-    protected static ?string $navigationLabel  = 'Synced Records';
-    protected static ?string $modelLabel       = 'Record';
+    protected static ?string $model = SyncedRecord::class;
+
+    protected static ?string $navigationLabel = 'Synced Records';
+
+    protected static ?string $modelLabel = 'Record';
+
     protected static ?string $pluralModelLabel = 'Records';
 
     public static function getNavigationIcon(): string|\BackedEnum|null
@@ -66,12 +69,10 @@ class RecordResource extends Resource
 
     public static function table(Table $table): Table
     {
-        // Preset options — dynamic from config
         $presetOptions = collect(config('sqlsync.presets', []))
             ->mapWithKeys(fn ($class, $key) => [$key => ucwords(str_replace('_', ' ', $key))])
             ->toArray();
 
-        // Fallback if no presets in config yet
         if (empty($presetOptions)) {
             $presetOptions = [
                 'al_ameen' => 'Al-Ameen (الأمين)',
@@ -110,7 +111,7 @@ class RecordResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'al_ameen' => 'success',
                         'al_bayan' => 'warning',
-                        default    => 'gray',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('group_name')
@@ -202,11 +203,22 @@ class RecordResource extends Resource
     {
         return [
             'index' => ListRecords::route('/'),
-            'view'  => ViewRecord::route('/{record}'),
+            'view' => ViewRecord::route('/{record}'),
         ];
     }
 
-    public static function canCreate(): bool { return false; }
-    public static function canEdit($record): bool { return false; }
-    public static function canDelete($record): bool { return false; }
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
 }

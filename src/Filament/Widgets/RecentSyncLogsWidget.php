@@ -26,8 +26,8 @@ class RecentSyncLogsWidget extends BaseWidget
     public function table(Table $table): Table
     {
         $plugin = SqlSyncFilamentPlugin::get();
-        $limit  = (int) config('sqlsync-filament.recent_logs_limit', 20);
-        $query  = SyncLog::query()->orderByDesc('synced_at')->limit($limit);
+        $limit = (int) config('sqlsync-filament.recent_logs_limit', 20);
+        $query = SyncLog::query()->orderByDesc('synced_at')->limit($limit);
 
         if ($fn = $plugin->getLogsQuery()) {
             $query = $fn($query);
@@ -47,7 +47,7 @@ class RecentSyncLogsWidget extends BaseWidget
                     ->color(fn (string $state): string => match ($state) {
                         'al_ameen' => 'success',
                         'al_bayan' => 'warning',
-                        default    => 'gray',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('inserted')
@@ -70,8 +70,8 @@ class RecentSyncLogsWidget extends BaseWidget
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'success' => 'success',
-                        'error'   => 'danger',
-                        default   => 'gray',
+                        'error' => 'danger',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('synced_at')

@@ -2,4 +2,6 @@
 
 declare(strict_types=1);
 
-uses(SqlSync\FilamentSqlSync\Tests\TestCase::class)->in('Feature');
+use SqlSync\FilamentSqlSync\Tests\TestCase;
+
+uses(TestCase::class)->in('Feature');

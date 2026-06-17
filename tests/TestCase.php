@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace SqlSync\FilamentSqlSync\Tests;
 
 use Orchestra\Testbench\TestCase as Orchestra;
-use SqlSync\LaravelSqlSync\SqlSyncServiceProvider;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentServiceProvider;
+use SqlSync\LaravelSqlSync\SqlSyncServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -22,7 +22,7 @@ class TestCase extends Orchestra
     {
         config()->set('database.default', 'testing');
         config()->set('database.connections.testing', [
-            'driver'   => 'sqlite',
+            'driver' => 'sqlite',
             'database' => ':memory:',
         ]);
     }

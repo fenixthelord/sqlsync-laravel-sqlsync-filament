@@ -16,6 +16,7 @@ use SqlSync\LaravelSqlSync\Models\SyncLog;
 class SyncStatsWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
+
     protected int|string|array $columnSpan = 'full';
 
     public static function canView(): bool
@@ -25,9 +26,9 @@ class SyncStatsWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $plugin    = SqlSyncFilamentPlugin::get();
+        $plugin = SqlSyncFilamentPlugin::get();
         $threshold = (int) config('sqlsync-filament.online_threshold_minutes', 5);
-        $cacheTtl  = (int) config('sqlsync-filament.stats_cache_seconds', 20);
+        $cacheTtl = (int) config('sqlsync-filament.stats_cache_seconds', 20);
 
         if ($plugin->shouldCacheStats()) {
             $stats = Cache::remember(
@@ -77,8 +78,6 @@ class SyncStatsWidget extends BaseWidget
     }
 
     /**
-     * Only compute what is actually needed based on enabled features.
-     *
      * @return array<string, mixed>
      */
     private function calculateStats(SqlSyncFilamentPlugin $plugin, int $threshold): array
@@ -87,28 +86,34 @@ class SyncStatsWidget extends BaseWidget
 
         if ($plugin->isFeatureEnabled('records')) {
             $recordsQuery = SyncedRecord::query();
+
             if ($fn = $plugin->getRecordsQuery()) {
                 $recordsQuery = $fn($recordsQuery);
             }
-            $stats['total']     = (clone $recordsQuery)->count();
-            $stats['active']    = (clone $recordsQuery)->where('is_active', true)->count();
+
+            $stats['total'] = (clone $recordsQuery)->count();
+            $stats['active'] = (clone $recordsQuery)->where('is_active', true)->count();
             $stats['last_sync'] = (clone $recordsQuery)->max('synced_at');
         }
 
         if ($plugin->isFeatureEnabled('agents')) {
             $agentsQuery = SyncAgent::query();
+
             if ($fn = $plugin->getAgentsQuery()) {
                 $agentsQuery = $fn($agentsQuery);
             }
+
             $stats['agents_online'] = (clone $agentsQuery)->where('last_heartbeat', '>=', now()->subMinutes($threshold))->count();
-            $stats['agents_total']  = (clone $agentsQuery)->count();
+            $stats['agents_total'] = (clone $agentsQuery)->count();
         }
 
         if ($plugin->isFeatureEnabled('logs')) {
             $logsQuery = SyncLog::query();
+
             if ($fn = $plugin->getLogsQuery()) {
                 $logsQuery = $fn($logsQuery);
             }
+
             $stats['today_logs'] = (clone $logsQuery)->whereDate('synced_at', today())->count();
         }
 
@@ -118,6 +123,7 @@ class SyncStatsWidget extends BaseWidget
     protected function getPollingInterval(): ?string
     {
         $interval = config('sqlsync-filament.polling_interval', '30s');
+
         return $interval ?: null;
     }
 }

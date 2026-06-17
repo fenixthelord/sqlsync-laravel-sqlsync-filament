@@ -10,7 +10,8 @@ return [
     |--------------------------------------------------------------------------
     */
     'navigation_group' => 'SqlSync',
-    'navigation_icon'  => 'heroicon-o-arrow-path-rounded-square',
+
+    'navigation_icon' => 'heroicon-o-arrow-path-rounded-square',
 
     /*
     |--------------------------------------------------------------------------
@@ -20,9 +21,9 @@ return [
     */
     'features' => [
         'dashboard' => true,
-        'records'   => true,
-        'agents'    => true,
-        'logs'      => true,
+        'records' => true,
+        'agents' => true,
+        'logs' => true,
     ],
 
     /*
@@ -30,9 +31,12 @@ return [
     | Performance
     |--------------------------------------------------------------------------
     */
-    'polling_interval'         => '30s',  // null to disable polling
+    'polling_interval' => '30s',
+
     'online_threshold_minutes' => 5,
-    'recent_logs_limit'        => 20,
-    'stats_cache_seconds'      => 20,
+
+    'recent_logs_limit' => 20,
+
+    'stats_cache_seconds' => 20,
 
 ];

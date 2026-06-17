@@ -21,9 +21,11 @@ use SqlSync\LaravelSqlSync\Models\SyncAgent;
 
 class AgentResource extends Resource
 {
-    protected static ?string $model           = SyncAgent::class;
+    protected static ?string $model = SyncAgent::class;
+
     protected static ?string $navigationLabel = 'Agents';
-    protected static ?string $modelLabel      = 'Agent';
+
+    protected static ?string $modelLabel = 'Agent';
 
     public static function getNavigationIcon(): string|\BackedEnum|null
     {
@@ -154,11 +156,22 @@ class AgentResource extends Resource
     {
         return [
             'index' => ListAgents::route('/'),
-            'view'  => ViewAgent::route('/{record}'),
+            'view' => ViewAgent::route('/{record}'),
         ];
     }
 
-    public static function canCreate(): bool { return false; }
-    public static function canEdit($record): bool { return false; }
-    public static function canDelete($record): bool { return false; }
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
 }
