@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\Pages;
 
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\Http;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
+use SqlSync\LaravelSqlSync\Models\SyncAgent;
 
 class ListAgents extends ListRecords
 {
@@ -77,18 +79,18 @@ class ListAgents extends ListRecords
                 ->icon('heroicon-o-plus')
                 ->color('primary')
                 ->form([
-                    \Filament\Forms\Components\TextInput::make('agent_id')
+                    TextInput::make('agent_id')
                         ->label('Agent ID')
                         ->required()
                         ->unique('sqlsync_agents', 'agent_id'),
-                    \Filament\Forms\Components\TextInput::make('label')
+                    TextInput::make('label')
                         ->label('اسم/وصف'),
-                    \Filament\Forms\Components\TextInput::make('company_id')
+                    TextInput::make('company_id')
                         ->label('Company ID')
                         ->numeric(),
                 ])
                 ->action(function (array $data) {
-                    \SqlSync\LaravelSqlSync\Models\SyncAgent::create($data);
+                    SyncAgent::create($data);
 
                     Notification::make()
                         ->title('تم تسجيل الـ Agent')

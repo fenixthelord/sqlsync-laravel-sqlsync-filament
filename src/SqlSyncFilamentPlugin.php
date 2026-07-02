@@ -8,6 +8,7 @@ use Closure;
 use Filament\Contracts\Plugin;
 use Filament\Facades\Filament;
 use Filament\Panel;
+use SqlSync\FilamentSqlSync\Filament\Pages\BridgeSettingsPage;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
@@ -220,7 +221,7 @@ class SqlSyncFilamentPlugin implements Plugin
         }
 
         if ($this->isFeatureEnabled('bridge')) {
-            $pages[] = \SqlSync\FilamentSqlSync\Filament\Pages\BridgeSettingsPage::class;
+            $pages[] = BridgeSettingsPage::class;
         }
 
         $panel
@@ -229,15 +230,18 @@ class SqlSyncFilamentPlugin implements Plugin
     }
 
     public function modifyMappingsQueryUsing(Closure $callback): static
-{
-    $this->mappingsQuery = $callback;
-    return $this;
-}
+    {
+        $this->mappingsQuery = $callback;
+
+        return $this;
+    }
+
     public function withMappings(bool $show = true): static
-{
-    $this->showMappings = $show;
-    return $this;
-}
+    {
+        $this->showMappings = $show;
+
+        return $this;
+    }
 
     public function withBridge(bool $show = true): static
     {
@@ -246,10 +250,10 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this;
     }
 
-public function getMappingsQuery(): ?Closure
-{
-    return $this->mappingsQuery;
-}
+    public function getMappingsQuery(): ?Closure
+    {
+        return $this->mappingsQuery;
+    }
 
     public function boot(Panel $panel): void {}
 }
