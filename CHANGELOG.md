@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- `AgentResource` — "Test Connection" header action on the Agents list page. Sends a real self-signed HMAC heartbeat request to the configured sync endpoint using the app's own `SQLSYNC_AGENT_SECRET`, so admins can verify the endpoint + secret are wired correctly *before* touching the Windows Agent. Surfaces the exact failure (missing secret, signature mismatch, network error) as a Filament notification instead of a silent 500/401 with no UI feedback.
+- `AgentResource` — "تسجيل Agent يدوياً" (Register Agent manually) header action: lets an admin pre-register an `agent_id` / `label` / `company_id` from the panel, for cases where the Windows Agent isn't available yet or troubleshooting is needed. Does not require `spatie/laravel-permission` — no new dependency introduced.
+
+### Fixed
+- Previously `AgentResource::canCreate()` returned `false` unconditionally with no alternative path, so any failure in the Agent → Server handshake (missing secret, wrong endpoint, network block) had zero in-panel diagnosis; the only feedback loop was the external Windows Agent's own error message. This release adds an in-panel diagnostic path without weakening the model's real read-only guarantees (`canEdit`/`canDelete` remain `false`; manual registration only inserts, it doesn't let anyone edit synced stats).
+
 ## [v1.1.0-beta.1] — 2026-06-17
 
 ### Added
