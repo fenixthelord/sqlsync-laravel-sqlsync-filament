@@ -198,6 +198,12 @@ class RecordResource extends Resource
                                 ->default(Arr::get($recordArray, $sourceField));
                         }
 
+                        if ($setting->category_target_field) {
+                            $fields[] = TextInput::make($setting->category_target_field)
+                                ->label($setting->category_target_field.' (تتحل تلقائياً — عدّلها لو بدك)')
+                                ->default($setting->resolveCategoryId($recordArray));
+                        }
+
                         $fields[] = KeyValue::make('extra')
                             ->label('حقول إضافية (مثل category_id) — مطلوبة حسب جدولك')
                             ->keyLabel('العمود')

@@ -68,6 +68,11 @@ class BridgeSettingsPage extends Page implements HasForms
                 ->all(),
             'create_defaults' => $setting->create_defaults ?? [],
             'skip_create_if_missing_defaults' => $setting->skip_create_if_missing_defaults,
+            'category_model' => $setting->category_model,
+            'category_source' => $setting->category_source,
+            'category_match_column' => $setting->category_match_column,
+            'category_target_field' => $setting->category_target_field,
+            'category_slug_column' => $setting->category_slug_column,
         ]);
     }
 
@@ -125,6 +130,31 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->reorderable(false),
                 ]),
 
+            Section::make('التصنيف التلقائي (اختياري)')
+                ->description('لو صنف جديد جاي بفئة (مثل "أدوات وصيانة") مش موجودة بجدول الفئات عندك، بتنخلق تلقائياً وبتترابط بالمنتج — بدل ما تعلّق عملية الإنشاء بسبب حقل category_id الإجباري.')
+                ->schema([
+                    TextInput::make('category_model')
+                        ->label('اسم الـ Model بالكامل')
+                        ->placeholder('App\\Models\\Category'),
+
+                    TextInput::make('category_source')
+                        ->label('الحقل بالسجل المتزامَن')
+                        ->placeholder('group_name'),
+
+                    TextInput::make('category_match_column')
+                        ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
+                        ->placeholder('name'),
+
+                    TextInput::make('category_target_field')
+                        ->label('العمود بجدول المنتجات يلي بياخد معرّف الفئة')
+                        ->placeholder('category_id'),
+
+                    TextInput::make('category_slug_column')
+                        ->label('عمود الـ slug بجدول الفئات (اتركه فاضي إذا مافي)')
+                        ->placeholder('slug'),
+                ])
+                ->columns(2),
+
             Section::make('قيم افتراضية عند إنشاء منتج جديد')
                 ->description('لو الصنف مش موجود أصلاً بجدولك، وعندك أعمدة إجبارية (متل category_id)، حدد قيمة افتراضية هون. اتركها فاضية إذا ما في قيمة آمنة — هيك ما رح ينعمل إنشاء تلقائي وبتضل تراجعه يدوياً.')
                 ->schema([
@@ -168,6 +198,11 @@ class BridgeSettingsPage extends Page implements HasForms
             'fields' => $fields,
             'create_defaults' => $state['create_defaults'] ?? [],
             'skip_create_if_missing_defaults' => $state['skip_create_if_missing_defaults'] ?? true,
+            'category_model' => $state['category_model'] ?? null,
+            'category_source' => $state['category_source'] ?? null,
+            'category_match_column' => $state['category_match_column'] ?? null,
+            'category_target_field' => $state['category_target_field'] ?? null,
+            'category_slug_column' => $state['category_slug_column'] ?? null,
         ]);
 
         Notification::make()
