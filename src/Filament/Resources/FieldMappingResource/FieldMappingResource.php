@@ -7,6 +7,9 @@ namespace SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -15,9 +18,6 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Illuminate\Database\Eloquent\Builder;
 use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\Pages\CreateFieldMapping;
 use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\Pages\EditFieldMapping;
@@ -89,7 +89,7 @@ class FieldMappingResource extends Resource
     public static function form(Schema $schema): Schema
     {
         $presetOptions = self::presetOptions();
-        $roleOptions   = self::roleOptions();
+        $roleOptions = self::roleOptions();
 
         return $schema->components([
             Section::make('Field Mapping')
@@ -157,7 +157,7 @@ class FieldMappingResource extends Resource
                     ->color(fn (string $state): string => match ($state) {
                         'al_ameen' => 'success',
                         'al_bayan' => 'warning',
-                        default    => 'gray',
+                        default => 'gray',
                     })
                     ->sortable(),
 
@@ -233,13 +233,11 @@ class FieldMappingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListFieldMappings::route('/'),
+            'index' => ListFieldMappings::route('/'),
             'create' => CreateFieldMapping::route('/create'),
-            'edit'   => EditFieldMapping::route('/{record}/edit'),
+            'edit' => EditFieldMapping::route('/{record}/edit'),
         ];
     }
-
-    // ── Helpers ────────────────────────────────────────────────────────────
 
     private static function presetOptions(): array
     {
@@ -255,22 +253,22 @@ class FieldMappingResource extends Resource
     {
         return match ($preset) {
             'al_ameen' => [
-                'mtHigh'      => 'mtHigh — سعر عالي',
-                'mtLow'       => 'mtLow — سعر منخفض',
-                'mtWhole'     => 'mtWhole — سعر الجملة',
-                'mtHalf'      => 'mtHalf — سعر نصف جملة',
-                'mtRetail'    => 'mtRetail — سعر المفرق',
-                'mtEndUser'   => 'mtEndUser — سعر المستهلك',
-                'mtExport'    => 'mtExport — سعر التصدير',
-                'mtVendor'    => 'mtVendor — سعر المورد',
-                'mtUnity'     => 'mtUnity — الوحدة الأساسية',
-                'mtUnit2'     => 'mtUnit2 — الوحدة الثانية',
+                'mtHigh' => 'mtHigh — سعر عالي',
+                'mtLow' => 'mtLow — سعر منخفض',
+                'mtWhole' => 'mtWhole — سعر الجملة',
+                'mtHalf' => 'mtHalf — سعر نصف جملة',
+                'mtRetail' => 'mtRetail — سعر المفرق',
+                'mtEndUser' => 'mtEndUser — سعر المستهلك',
+                'mtExport' => 'mtExport — سعر التصدير',
+                'mtVendor' => 'mtVendor — سعر المورد',
+                'mtUnity' => 'mtUnity — الوحدة الأساسية',
+                'mtUnit2' => 'mtUnit2 — الوحدة الثانية',
                 'mtUnit2Fact' => 'mtUnit2Fact — معامل الوحدة 2',
-                'mtUnit3'     => 'mtUnit3 — الوحدة الثالثة',
+                'mtUnit3' => 'mtUnit3 — الوحدة الثالثة',
                 'mtUnit3Fact' => 'mtUnit3Fact — معامل الوحدة 3',
-                'mtOrigin'    => 'mtOrigin — المنشأ',
+                'mtOrigin' => 'mtOrigin — المنشأ',
                 'mtPriceType' => 'mtPriceType — نوع السعر',
-                'mtSellType'  => 'mtSellType — نوع البيع',
+                'mtSellType' => 'mtSellType — نوع البيع',
             ],
             default => [],
         };
@@ -279,19 +277,19 @@ class FieldMappingResource extends Resource
     private static function roleOptions(): array
     {
         return [
-            'retail_price'    => 'retail_price — سعر المفرق',
+            'retail_price' => 'retail_price — سعر المفرق',
             'wholesale_price' => 'wholesale_price — سعر الجملة',
-            'half_price'      => 'half_price — نصف جملة',
-            'end_user_price'  => 'end_user_price — سعر المستهلك',
-            'high_price'      => 'high_price — سعر عالي',
-            'low_price'       => 'low_price — سعر منخفض',
-            'export_price'    => 'export_price — سعر التصدير',
-            'vendor_price'    => 'vendor_price — سعر المورد',
-            'unit_1'          => 'unit_1 — الوحدة الأساسية',
-            'unit_2'          => 'unit_2 — الوحدة الثانية',
-            'unit_2_factor'   => 'unit_2_factor — معامل الوحدة 2',
-            'unit_3'          => 'unit_3 — الوحدة الثالثة',
-            'unit_3_factor'   => 'unit_3_factor — معامل الوحدة 3',
+            'half_price' => 'half_price — نصف جملة',
+            'end_user_price' => 'end_user_price — سعر المستهلك',
+            'high_price' => 'high_price — سعر عالي',
+            'low_price' => 'low_price — سعر منخفض',
+            'export_price' => 'export_price — سعر التصدير',
+            'vendor_price' => 'vendor_price — سعر المورد',
+            'unit_1' => 'unit_1 — الوحدة الأساسية',
+            'unit_2' => 'unit_2 — الوحدة الثانية',
+            'unit_2_factor' => 'unit_2_factor — معامل الوحدة 2',
+            'unit_3' => 'unit_3 — الوحدة الثالثة',
+            'unit_3_factor' => 'unit_3_factor — معامل الوحدة 3',
         ];
     }
 }

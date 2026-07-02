@@ -10,8 +10,8 @@ use Filament\Facades\Filament;
 use Filament\Panel;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
-use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\FieldMappingResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 
 class SqlSyncFilamentPlugin implements Plugin
 {
@@ -22,6 +22,8 @@ class SqlSyncFilamentPlugin implements Plugin
     protected ?bool $showAgents = null;
 
     protected ?bool $showLogs = null;
+
+    protected ?bool $showMappings = null;
 
     protected ?string $navigationGroup = null;
 
@@ -34,8 +36,6 @@ class SqlSyncFilamentPlugin implements Plugin
     protected ?Closure $logsQuery = null;
 
     protected ?Closure $mappingsQuery = null;
-
-    protected ?bool $showMappings = null;
 
     protected ?Closure $statsCacheKeyCallback = null;
 
@@ -91,6 +91,13 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this;
     }
 
+    public function withMappings(bool $show = true): static
+    {
+        $this->showMappings = $show;
+
+        return $this;
+    }
+
     public function navigationGroup(string $group): static
     {
         $this->navigationGroup = $group;
@@ -122,6 +129,13 @@ class SqlSyncFilamentPlugin implements Plugin
     public function modifyLogsQueryUsing(Closure $callback): static
     {
         $this->logsQuery = $callback;
+
+        return $this;
+    }
+
+    public function modifyMappingsQueryUsing(Closure $callback): static
+    {
+        $this->mappingsQuery = $callback;
 
         return $this;
     }
@@ -163,6 +177,11 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this->logsQuery;
     }
 
+    public function getMappingsQuery(): ?Closure
+    {
+        return $this->mappingsQuery;
+    }
+
     public function shouldCacheStats(): bool
     {
         if ($this->statsCacheKeyCallback !== null) {
@@ -197,7 +216,7 @@ class SqlSyncFilamentPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
-        $resources[] = FieldMappingResource::class;
+        $resources = [];
         $pages = [];
 
         if ($this->isFeatureEnabled('records')) {
@@ -208,34 +227,18 @@ class SqlSyncFilamentPlugin implements Plugin
             $resources[] = AgentResource::class;
         }
 
-        if ($this->isFeatureEnabled('dashboard')) {
-            $pages[] = SqlSyncDashboard::class;
-        }
-
         if ($this->isFeatureEnabled('mappings')) {
             $resources[] = FieldMappingResource::class;
+        }
+
+        if ($this->isFeatureEnabled('dashboard')) {
+            $pages[] = SqlSyncDashboard::class;
         }
 
         $panel
             ->resources($resources)
             ->pages($pages);
     }
-
-    public function modifyMappingsQueryUsing(Closure $callback): static
-{
-    $this->mappingsQuery = $callback;
-    return $this;
-}
-    public function withMappings(bool $show = true): static
-{
-    $this->showMappings = $show;
-    return $this;
-}
-
-public function getMappingsQuery(): ?Closure
-{
-    return $this->mappingsQuery;
-}
 
     public function boot(Panel $panel): void {}
 }
