@@ -25,6 +25,7 @@ return [
         'agents' => true,
         'logs' => true,
         'mappings' => true,
+        'bridge' => true,
     ],
 
     /*
