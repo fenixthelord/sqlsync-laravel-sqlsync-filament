@@ -255,5 +255,8 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this->mappingsQuery;
     }
 
-    public function boot(Panel $panel): void {}
+    public function boot(Panel $panel): void
+    {
+        //
+    }
 }
