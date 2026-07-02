@@ -11,8 +11,8 @@ use Filament\Panel;
 use SqlSync\FilamentSqlSync\Filament\Pages\BridgeSettingsPage;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
-use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\FieldMappingResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 
 class SqlSyncFilamentPlugin implements Plugin
 {
