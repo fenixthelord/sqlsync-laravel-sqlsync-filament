@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Log;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
 use SqlSync\LaravelSqlSync\Models\SyncedRecord;
@@ -202,7 +203,7 @@ class BridgeSettingsPage extends Page implements HasForms
                         // the same barcode/SKU) must not abort the other
                         // thousands of records still queued.
                         $failed++;
-                        \Illuminate\Support\Facades\Log::warning('SqlSync bridge: re-apply skipped a record', [
+                        Log::warning('SqlSync bridge: re-apply skipped a record', [
                             'record_id' => $record->id,
                             'name' => $record->name,
                             'error' => $e->getMessage(),
