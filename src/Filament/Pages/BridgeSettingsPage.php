@@ -184,23 +184,37 @@ class BridgeSettingsPage extends Page implements HasForms
     public function reapplyToExisting(): void
     {
         $count = 0;
+        $failed = 0;
 
         SyncedRecord::query()
-            ->chunkById(200, function ($records) use (&$count) {
+            ->chunkById(200, function ($records) use (&$count, &$failed) {
                 foreach ($records as $record) {
-                    // synced_at is intentionally re-stamped so the model is
-                    // "dirty" and Eloquent actually fires the saved event —
-                    // a no-op save() on an unchanged model skips events
-                    // entirely.
-                    $record->synced_at = now();
-                    $record->save();
-                    $count++;
+                    try {
+                        // synced_at is intentionally re-stamped so the model
+                        // is "dirty" and Eloquent actually fires the saved
+                        // event — a no-op save() on an unchanged model
+                        // skips events entirely.
+                        $record->synced_at = now();
+                        $record->save();
+                        $count++;
+                    } catch (\Throwable $e) {
+                        // A single bad row (e.g. two source items sharing
+                        // the same barcode/SKU) must not abort the other
+                        // thousands of records still queued.
+                        $failed++;
+                        \Illuminate\Support\Facades\Log::warning('SqlSync bridge: re-apply skipped a record', [
+                            'record_id' => $record->id,
+                            'name' => $record->name,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
             });
 
         Notification::make()
             ->title('تمت إعادة المعالجة')
-            ->body("تمت إعادة تطبيق الربط على {$count} سجل.")
+            ->body("تمت إعادة تطبيق الربط على {$count} سجل"
+                .($failed > 0 ? "، وتم تجاهل {$failed} سجل بسبب تعارض (راجع الـ log)." : '.'))
             ->success()
             ->send();
     }
