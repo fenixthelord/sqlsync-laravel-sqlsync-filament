@@ -155,4 +155,4 @@ Dashboard, Agents, and Logs widgets auto-refresh based on `polling_interval`. Th
 
 ## Developer
 
-**Muhammad Khalaf** — contact@sqlsync.dev
+**Muhammad Khalaf** — fenixthelord@gmail.com
