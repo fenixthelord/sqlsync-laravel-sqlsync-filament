@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
+use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 
 class BridgeSettingsPage extends Page implements HasForms
 {
@@ -187,7 +188,7 @@ class BridgeSettingsPage extends Page implements HasForms
                 ->action(function () {
                     $count = 0;
 
-                    \SqlSync\LaravelSqlSync\Models\SyncedRecord::query()
+                    SyncedRecord::query()
                         ->chunkById(200, function ($records) use (&$count) {
                             foreach ($records as $record) {
                                 // synced_at is intentionally re-stamped so the
