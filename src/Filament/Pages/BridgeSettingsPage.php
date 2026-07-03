@@ -177,6 +177,35 @@ class BridgeSettingsPage extends Page implements HasForms
             Action::make('save')
                 ->label('حفظ الإعدادات')
                 ->submit('save'),
+
+            Action::make('reapplyToExisting')
+                ->label('إعادة تطبيق الربط على كل السجلات')
+                ->color('gray')
+                ->icon('heroicon-o-arrow-path')
+                ->requiresConfirmation()
+                ->modalDescription('هيك بيعيد تشغيل الربط على كل سجل موجود أصلاً بـ Synced Records، حتى لو ما تغيّر شي بقاعدة بيانات المحاسبة (مفيد بعد تعديل الإعدادات، خصوصاً مع المزامنة التزايدية).')
+                ->action(function () {
+                    $count = 0;
+
+                    \SqlSync\LaravelSqlSync\Models\SyncedRecord::query()
+                        ->chunkById(200, function ($records) use (&$count) {
+                            foreach ($records as $record) {
+                                // synced_at is intentionally re-stamped so the
+                                // model is "dirty" and Eloquent actually fires
+                                // the saved event — a no-op save() on an
+                                // unchanged model skips events entirely.
+                                $record->synced_at = now();
+                                $record->save();
+                                $count++;
+                            }
+                        });
+
+                    Notification::make()
+                        ->title('تمت إعادة المعالجة')
+                        ->body("تمت إعادة تطبيق الربط على {$count} سجل.")
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 
