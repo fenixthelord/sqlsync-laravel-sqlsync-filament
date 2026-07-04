@@ -11,6 +11,7 @@ use Filament\Panel;
 use SqlSync\FilamentSqlSync\Filament\Pages\BridgeSettingsPage;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\BridgeLogResource\BridgeLogResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\FieldMappingResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\RecordResource\RecordResource;
 
@@ -222,6 +223,7 @@ class SqlSyncFilamentPlugin implements Plugin
 
         if ($this->isFeatureEnabled('bridge')) {
             $pages[] = BridgeSettingsPage::class;
+            $resources[] = BridgeLogResource::class;
         }
 
         $panel
