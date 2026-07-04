@@ -24,7 +24,7 @@ return [
         'records' => true,
         'agents' => true,
         'logs' => true,
-        'mappings' => true,
+        'mappings' => false,
         'bridge' => true,
     ],
 

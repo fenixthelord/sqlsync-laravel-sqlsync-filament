@@ -2,8 +2,8 @@
     <form wire:submit="save">
         {{ $this->form }}
 
-        <div class="mt-6 flex items-center gap-3">
-            <x-filament::button type="submit">
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+            <x-filament::button type="submit" icon="heroicon-o-check">
                 حفظ الإعدادات
             </x-filament::button>
 
@@ -21,26 +21,40 @@
 
     @php($progress = $this->getReapplyProgress())
     @if ($progress)
-        <div
-            @if($progress['status'] === 'running') wire:poll.2s @endif
-            class="mt-6 rounded-xl border p-4"
-            style="border-color: var(--gray-200, #e5e7eb);"
-        >
-            @if ($progress['status'] === 'running')
-                @php($pct = $progress['total'] > 0 ? intval(($progress['done'] + $progress['failed']) / $progress['total'] * 100) : 0)
-                <div class="flex items-center justify-between mb-2 text-sm">
-                    <span>جاري المعالجة بالخلفية… {{ $progress['done'] + $progress['failed'] }} / {{ $progress['total'] }}</span>
-                    <span>{{ $pct }}%</span>
-                </div>
-                <div class="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
-                    <div class="h-full rounded-full bg-primary-600" style="width: {{ $pct }}%"></div>
-                </div>
-            @else
-                <div class="text-sm">
-                    ✅ اكتملت آخر معالجة: {{ $progress['done'] }} نجح، {{ $progress['failed'] }} اتجاهل، من أصل {{ $progress['total'] }}.
-                </div>
-            @endif
+        <div wire:poll.2s="{{ $progress['status'] === 'running' ? '$refresh' : '' }}" class="mt-6">
+            <x-filament::section>
+                @if ($progress['status'] === 'running')
+                    @php($handled = $progress['done'] + $progress['failed'])
+                    @php($pct = $progress['total'] > 0 ? intval($handled / $progress['total'] * 100) : 0)
+
+                    <div class="flex items-center gap-3">
+                        <x-filament::loading-indicator class="h-5 w-5 text-primary-600" />
+                        <span class="font-medium">جاري المعالجة بالخلفية…</span>
+                        <x-filament::badge color="gray">{{ $handled }} / {{ $progress['total'] }}</x-filament::badge>
+                    </div>
+
+                    <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                        <div class="h-full rounded-full bg-primary-600 transition-all duration-500" style="width: {{ $pct }}%"></div>
+                    </div>
+
+                    <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        تقدر تسكّر الصفحة وترجعلها لاحقاً — العملية مستمرة بالخلفية وما بتتوقف.
+                    </p>
+                @else
+                    <div class="flex items-center gap-3">
+                        <x-filament::icon icon="heroicon-o-check-circle" class="h-6 w-6 text-success-600" />
+                        <span class="font-medium">اكتملت آخر معالجة</span>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <x-filament::badge color="success">{{ $progress['done'] }} نجح</x-filament::badge>
+                        @if ($progress['failed'] > 0)
+                            <x-filament::badge color="warning">{{ $progress['failed'] }} اتجاهل</x-filament::badge>
+                        @endif
+                        <x-filament::badge color="gray">من أصل {{ $progress['total'] }}</x-filament::badge>
+                    </div>
+                @endif
+            </x-filament::section>
         </div>
     @endif
 </x-filament-panels::page>
-
