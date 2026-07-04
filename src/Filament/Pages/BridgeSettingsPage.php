@@ -173,7 +173,7 @@ class BridgeSettingsPage extends Page implements HasForms
         ])->statePath('data');
     }
 
-    protected function getFormActions(): array
+    public function getFormActions(): array
     {
         return [
             Action::make('save')
