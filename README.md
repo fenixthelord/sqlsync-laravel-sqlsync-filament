@@ -63,6 +63,8 @@ SqlSyncFilamentPlugin::make()
     ->withRecords(false)    // hide records resource
     ->withAgents(false)     // hide agents resource + widget
     ->withLogs(false)       // hide logs widget
+    ->withMappings(true)    // legacy field-label resource — off by default, superseded by Product Bridge
+    ->withBridge(false)     // hide Product Bridge + Bridge Activity
 ```
 
 Or via `config/sqlsync-filament.php`:
@@ -73,6 +75,8 @@ Or via `config/sqlsync-filament.php`:
     'records'   => true,
     'agents'    => true,
     'logs'      => true,
+    'mappings'  => false,
+    'bridge'    => true,
 ],
 ```
 
@@ -145,11 +149,19 @@ return [
 | Section | Description |
 |---------|-------------|
 | SqlSync Dashboard | Stats: total records, agents online, last sync, syncs today |
-| Records | Searchable + filterable table with detail view |
-| Agents | Live monitor with Online/Offline status |
+| Records | Searchable + filterable table with detail view, "إنشاء منتج" manual bridge action per row |
+| Agents | Live monitor with Online/Offline status + "Test Connection" self-check |
 | Sync Logs | Recent sync operations feed |
+| Product Bridge | Visual field mapping from synced records to *your* product model — no code, no fixed schema assumption |
+| Bridge Activity | Full history of every created / updated / skipped decision, with stats and filters |
 
 Dashboard, Agents, and Logs widgets auto-refresh based on `polling_interval`. The Records table does not poll.
+
+---
+
+## Product Bridge & background re-apply
+
+See the core package's [`sqlsync/laravel-sqlsync` README](https://github.com/fenixthelord/sqlsync-package#product-bridge) for the full Product Bridge reference (field mapping, auto-category, `sqlsync:reapply-bridge` CLI command). From this panel, the **Product Bridge** page lets any user (not just a developer) configure it visually and trigger a background re-apply with a live progress bar — no terminal required.
 
 ---
 
