@@ -15,10 +15,10 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
+use SqlSync\LaravelSqlSync\Jobs\ReapplyBridgeJob;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
-use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 
 class BridgeSettingsPage extends Page implements HasForms
 {
@@ -184,40 +184,23 @@ class BridgeSettingsPage extends Page implements HasForms
 
     public function reapplyToExisting(): void
     {
-        $count = 0;
-        $failed = 0;
+        $setting = BridgeSetting::current();
 
-        SyncedRecord::query()
-            ->chunkById(200, function ($records) use (&$count, &$failed) {
-                foreach ($records as $record) {
-                    try {
-                        // synced_at is intentionally re-stamped so the model
-                        // is "dirty" and Eloquent actually fires the saved
-                        // event — a no-op save() on an unchanged model
-                        // skips events entirely.
-                        $record->synced_at = now();
-                        $record->save();
-                        $count++;
-                    } catch (\Throwable $e) {
-                        // A single bad row (e.g. two source items sharing
-                        // the same barcode/SKU) must not abort the other
-                        // thousands of records still queued.
-                        $failed++;
-                        Log::warning('SqlSync bridge: re-apply skipped a record', [
-                            'record_id' => $record->id,
-                            'name' => $record->name,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-            });
+        ReapplyBridgeJob::dispatch($setting->company_id);
 
         Notification::make()
-            ->title('تمت إعادة المعالجة')
-            ->body("تمت إعادة تطبيق الربط على {$count} سجل"
-                .($failed > 0 ? "، وتم تجاهل {$failed} سجل بسبب تعارض (راجع الـ log)." : '.'))
+            ->title('بدأت المعالجة بالخلفية')
+            ->body('رح يتحدّث التقدم تلقائياً تحت. تقدر تسكر الصفحة وترجعلها لاحقاً، العملية مستمرة بالخلفية.')
             ->success()
             ->send();
+    }
+
+    public function getReapplyProgress(): ?array
+    {
+        $setting = BridgeSetting::current();
+        $key = ReapplyBridgeJob::cacheKey($setting->company_id);
+
+        return Cache::get($key);
     }
 
     public function save(): void
