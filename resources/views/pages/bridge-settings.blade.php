@@ -1,4 +1,81 @@
 <x-filament-panels::page>
+
+    {{-- ── Sample data preview: the non-technical user's cheat sheet ────
+         Shows the LATEST synced record's fields with their real values.
+         The Field Mapping dropdowns below let you pick the same paths
+         you see here, so the mental model is:
+             "I want price=X on my product. I look here and see
+              extra_data.price_4 = 145. That's what I map." ────────────── --}}
+    @php($sample = $this->getSampleRecord())
+    @php($paths  = $this->getAvailablePaths())
+
+    <x-filament::section
+        icon="heroicon-o-eye"
+        icon-color="primary"
+    >
+        <x-slot name="heading">
+            بيانات نموذجية من آخر مزامنة
+        </x-slot>
+
+        <x-slot name="description">
+            @if ($sample)
+                هاي بيانات فعلية من آخر سجل زامنه الوكيل ({{ $sample->name ?? '—' }}).
+                استخدمها كمرجع لما تربط الحقول تحت — القيم المعروضة هنا هي القيم الفعلية
+                يلي رح تتنقل لجدول منتجاتك.
+            @else
+                لا يوجد بيانات مزامنة بعد.
+            @endif
+        </x-slot>
+
+        @if ($sample)
+            <div style="max-height: 380px; overflow-y: auto; border: 1px solid rgb(229, 231, 235); border-radius: 6px;">
+                <table style="width: 100%; border-collapse: collapse; font-family: monospace; font-size: 13px;">
+                    <thead style="background: rgba(59, 130, 246, 0.06); position: sticky; top: 0;">
+                        <tr>
+                            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid rgb(229, 231, 235);">اسم الحقل (استخدمه في الربط)</th>
+                            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid rgb(229, 231, 235);">القيمة الفعلية</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($paths as $path => $value)
+                            <tr style="border-bottom: 1px solid rgb(243, 244, 246);">
+                                <td style="padding: 6px 12px; direction: ltr; text-align: right; color: rgb(37, 99, 235);">{{ $path }}</td>
+                                <td style="padding: 6px 12px; color: {{ ($value === null || $value === '') ? 'rgb(156, 163, 175)' : 'inherit' }};">
+                                    @if ($value === null || $value === '')
+                                        (فاضي)
+                                    @elseif (is_bool($value))
+                                        {{ $value ? 'true' : 'false' }}
+                                    @else
+                                        {{ mb_strlen((string) $value) > 60 ? mb_substr((string) $value, 0, 60).'…' : $value }}
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top: 12px; color: rgb(107, 114, 128); font-size: 13px;">
+                💡 عند اختيار الحقل بالربط تحت، رح تشوف هالقيم بجانب اسم الحقل مباشرة.
+            </p>
+        @else
+            <div style="padding: 24px; background: rgba(251, 191, 36, 0.08); border-radius: 6px; border: 1px solid rgba(251, 191, 36, 0.3);">
+                <p style="margin: 0;">
+                    ⚠️ ما فيه بيانات لعرضها بعد. الخطوات:
+                </p>
+                <ol style="margin: 12px 0 0 0; padding-inline-start: 24px;">
+                    <li>ركّب برنامج SqlSyncAgent على جهاز الكمبيوتر يلي عنده قاعدة الأمين/البيان.</li>
+                    <li>عبّي إعدادات الاتصال واضغط "حفظ".</li>
+                    <li>استنى تكمل أول مزامنة (عادةً 30 ثانية أو حسب حجم البيانات).</li>
+                    <li>ارجع لهاي الصفحة — رح تشوف كل الحقول المتاحة هون، وبيصير كل شي واضح.</li>
+                </ol>
+            </div>
+        @endif
+    </x-filament::section>
+
+    <div style="margin-top: 24px;"></div>
+
+    {{-- ── Form ───────────────────────────────────────────────────────── --}}
     <form wire:submit="save">
         {{ $this->form }}
 
@@ -9,6 +86,52 @@
         </div>
     </form>
 
+    {{-- ── Live mapping preview ───────────────────────────────────────
+         For each field mapping the user has set, show what value would
+         actually get bridged — so mistakes ("I mapped price to
+         extra_data.sel_price but that's null for this customer, I
+         should use price_4") are caught BEFORE the user hits save +
+         reapply on a 17k-item catalogue. ─────────────────────────── --}}
+    @php($preview = $this->getMappingPreview())
+
+    @if (!empty($preview))
+        <div style="margin-top: 32px;">
+            <x-filament::section icon="heroicon-o-arrow-right-circle" icon-color="success">
+                <x-slot name="heading">معاينة الربط الحالي</x-slot>
+                <x-slot name="description">
+                    هيك رح تنكتب البيانات فوق جدول منتجاتك لو طبّقت الربط الآن على السجل النموذجي فوق.
+                    لو شفت "(فاضي)" — يعني الحقل يلي اخترته ما في له قيمة بهاد السجل، جرّب حقل ثاني.
+                </x-slot>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px;">
+                    <thead style="background: rgba(34, 197, 94, 0.06);">
+                        <tr>
+                            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid rgb(229, 231, 235);">العمود بجدولك</th>
+                            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid rgb(229, 231, 235);">من الحقل</th>
+                            <th style="text-align: right; padding: 8px 12px; border-bottom: 1px solid rgb(229, 231, 235);">القيمة يلي رح تنكتب</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($preview as $row)
+                            <tr style="border-bottom: 1px solid rgb(243, 244, 246);">
+                                <td style="padding: 8px 12px; font-family: monospace;">{{ $row['target'] }}</td>
+                                <td style="padding: 8px 12px; font-family: monospace; color: rgb(37, 99, 235); direction: ltr; text-align: right;">{{ $row['source'] }}</td>
+                                <td style="padding: 8px 12px; font-weight: 500; color: {{ $row['ok'] ? 'rgb(21, 128, 61)' : 'rgb(180, 83, 9)' }};">
+                                    @if ($row['ok'])
+                                        ✓ {{ $row['value'] }}
+                                    @else
+                                        ⚠ {{ $row['value'] }}
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </x-filament::section>
+        </div>
+    @endif
+
+    {{-- ── Reapply-to-existing (unchanged behavior) ─────────────────── --}}
     <div style="margin-top: 32px;">
         <x-filament::section>
             <x-slot name="heading">
