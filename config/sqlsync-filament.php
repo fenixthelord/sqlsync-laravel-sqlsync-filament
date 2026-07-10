@@ -26,6 +26,11 @@ return [
         'logs' => true,
         'mappings' => false,
         'bridge' => true,
+        // Off by default — this page permanently deletes SqlSync data
+        // (and optionally your Products table). Enable deliberately:
+        //   'reset' => true,
+        // or via the Plugin: ->withReset(true)
+        'reset' => false,
     ],
 
     /*
