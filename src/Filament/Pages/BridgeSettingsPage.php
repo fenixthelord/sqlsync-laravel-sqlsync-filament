@@ -58,6 +58,70 @@ class BridgeSettingsPage extends Page implements HasForms
             && SqlSyncFilamentPlugin::get()->isFeatureEnabled('bridge');
     }
 
+    /**
+     * Diagnoses the most common reason Product count stays at 0 despite
+     * sqlsync_records having data — the exact confusion this method
+     * exists to remove. Checked in priority order (most common /
+     * cheapest-to-fix cause first), returns the FIRST applicable issue
+     * rather than a wall of every possible problem at once.
+     *
+     * @return array{level: string, message: string}|null
+     *                                                    null means no obvious problem detected.
+     */
+    public function getDiagnosis(): ?array
+    {
+        $setting = BridgeSetting::current();
+        $recordCount = SyncedRecord::count();
+
+        if ($recordCount === 0) {
+            // Nothing synced yet at all — not a Bridge config problem,
+            // just means the Agent hasn't pushed anything. Don't alarm
+            // the admin about Bridge settings when this is the real gap.
+            return null;
+        }
+
+        if (! $setting->enabled) {
+            return [
+                'level' => 'danger',
+                'message' => "عندك {$recordCount} سجل متزامَن، بس الربط التلقائي مو مفعّل — لهيك صفر منتجات. فعّل \"تفعيل الربط التلقائي\" فوق واحفظ، وبعدها اضغط \"إعادة التطبيق\" تحت.",
+            ];
+        }
+
+        if (blank($setting->target_model) || ! class_exists((string) $setting->target_model)) {
+            return [
+                'level' => 'danger',
+                'message' => "عندك {$recordCount} سجل متزامَن، بس اسم موديل المنتج (target_model) فاضي أو غلط. تأكد إنك كاتب المسار الكامل الصحيح، متل App\\Models\\Product.",
+            ];
+        }
+
+        if (blank($setting->match_source) || blank($setting->match_target)) {
+            return [
+                'level' => 'warning',
+                'message' => "عندك {$recordCount} سجل متزامَن، بس عمود المطابقة الرئيسي (Barcode عادةً) مو محدد بالكامل. كمّل قسم \"عمود المطابقة\" تحت.",
+            ];
+        }
+
+        // Everything LOOKS configured — check if products actually exist.
+        $modelClass = $setting->target_model;
+        try {
+            $productCount = $modelClass::count();
+        } catch (\Throwable) {
+            return [
+                'level' => 'warning',
+                'message' => 'ما قدرنا نتحقق من عدد المنتجات — تأكد إن target_model صحيح وجدوله موجود بقاعدة البيانات.',
+            ];
+        }
+
+        if ($productCount === 0) {
+            return [
+                'level' => 'warning',
+                'message' => 'الإعدادات كلها موجودة، بس لسا صفر منتجات فعلياً. الأرجح إنه ما ترتبط ربط بعد على البيانات الموجودة — اضغط "إعادة التطبيق" تحت هالصفحة. لو ضلت صفر بعدها، افتح Bridge Activity وشوف الأسباب (Skipped / missing_match عادةً يعني الحقل يلي بتطابق فيه فاضي بمعظم السجلات).',
+            ];
+        }
+
+        return null;
+    }
+
     public function mount(): void
     {
         $setting = BridgeSetting::current();
@@ -418,6 +482,40 @@ class BridgeSettingsPage extends Page implements HasForms
         }
 
         return $preview;
+    }
+
+    /**
+     * One-click starting point for Al-Bayan pharmacy customers — fills
+     * in every SOURCE-side value we've already confirmed empirically
+     * (barcode as primary match, name+brand as fallback for barcode-less
+     * items, group_guid + tree resolution for categories). Leaves
+     * target_model, match_target, and the target columns in 'fields'
+     * blank/untouched, since those are specific to each project's own
+     * Product schema and can't be guessed safely.
+     *
+     * This doesn't eliminate configuration — it removes the part that
+     * required knowing Al-Bayan's internal data shape (which even the
+     * developer had to reverse-engineer from the live database), and
+     * leaves only the part that's inherently project-specific: what your
+     * own Product table's columns are called.
+     */
+    public function applyAlBayanPharmacyDefaults(): void
+    {
+        $this->form->fill(array_merge($this->data, [
+            'match_source' => 'barcode',
+            'fallback_match_fields' => [
+                ['target' => 'name', 'source' => 'name'],
+                ['target' => 'brand', 'source' => 'extra_data.origin'],
+            ],
+            'category_source' => 'group_guid',
+            'category_use_tree_resolution' => true,
+        ]));
+
+        Notification::make()
+            ->title('تم تعبئة القيم المعروفة من البيان')
+            ->body('باقي عليك بس: target_model، match_target، وأعمدة الحقول بقسم "تعيين الحقول" — هاي بتعتمد على جدول المنتجات عندك تحديداً.')
+            ->success()
+            ->send();
     }
 
     public function save(): void
