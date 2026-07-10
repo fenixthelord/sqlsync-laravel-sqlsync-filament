@@ -135,6 +135,7 @@ class BridgeSettingsPage extends Page implements HasForms
 
             if (is_array($value) && ! empty($value) && ! array_is_list($value)) {
                 $out = array_merge($out, $this->flattenRecordPaths($value, $path));
+
                 continue;
             }
 
@@ -172,8 +173,10 @@ class BridgeSettingsPage extends Page implements HasForms
         }
         if (is_scalar($value)) {
             $s = (string) $value;
+
             return mb_strlen($s) > 30 ? mb_substr($s, 0, 30).'…' : $s;
         }
+
         return null;
     }
 
