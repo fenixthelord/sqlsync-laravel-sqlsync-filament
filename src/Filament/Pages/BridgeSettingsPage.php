@@ -76,6 +76,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'skip_create_if_missing_defaults' => $setting->skip_create_if_missing_defaults,
             'category_model' => $setting->category_model,
             'category_source' => $setting->category_source,
+            'category_use_tree_resolution' => $setting->category_use_tree_resolution ?? false,
             'category_match_column' => $setting->category_match_column,
             'category_target_field' => $setting->category_target_field,
             'category_slug_column' => $setting->category_slug_column,
@@ -311,7 +312,12 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->options($pathOptions)
                         ->searchable()
                         ->native(false)
-                        ->placeholder('اختر الحقل يلي بيحدد اسم الفئة'),
+                        ->placeholder('اختر الحقل يلي بيحدد اسم الفئة')
+                        ->helperText('لبرنامج البيان: هاد الحقل هو group_guid (رقم التصنيف الشجري الخام — مش اسم مباشر).'),
+
+                    Toggle::make('category_use_tree_resolution')
+                        ->label('التصنيف شجري (Tree) مو اسم مباشر')
+                        ->helperText('فعّلها لو الحقل يلي فوق رقم من شجرة تصنيف هرمية (مثل TreeNum بالبيان: 117185) بدل اسم صريح. النظام رح يدور تلقائياً على أقرب تصنيف أب مطابق بالشجرة المتزامنة (117 → اسم التصنيف)، ويستخدم اسمه الحقيقي بدل الرقم الخام.'),
 
                     TextInput::make('category_match_column')
                         ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
@@ -440,6 +446,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'skip_create_if_missing_defaults' => $state['skip_create_if_missing_defaults'] ?? true,
             'category_model' => $state['category_model'] ?? null,
             'category_source' => $state['category_source'] ?? null,
+            'category_use_tree_resolution' => $state['category_use_tree_resolution'] ?? false,
             'category_match_column' => $state['category_match_column'] ?? null,
             'category_target_field' => $state['category_target_field'] ?? null,
             'category_slug_column' => $state['category_slug_column'] ?? null,
