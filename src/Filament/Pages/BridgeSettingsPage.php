@@ -183,7 +183,7 @@ class BridgeSettingsPage extends Page implements HasForms
         // new fields (e.g. a preset update adds price_36 next week), the
         // user just reloads this page to see them.
         $pathOptions = $this->pathOptions();
-        $hasData     = ! empty($pathOptions);
+        $hasData = ! empty($pathOptions);
 
         return $schema->components([
             Section::make('التفعيل والموديل الهدف')
@@ -251,10 +251,13 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->reorderable(false)
                         // Nice collapsed label so the user can see all their
                         // mappings at a glance: "price ← extra_data.sel_price"
-                        ->itemLabel(fn (array $state): ?string => (filled($state['target'] ?? null) && filled($state['source'] ?? null))
-                            ? ($state['target'].' ← '.$state['source'])
-                            : null
-                        ),
+                        ->itemLabel(function (array $state): ?string {
+                            if (! filled($state['target'] ?? null) || ! filled($state['source'] ?? null)) {
+                                return null;
+                            }
+
+                            return $state['target'].' ← '.$state['source'];
+                        }),
                 ]),
 
             Section::make('التصنيف التلقائي (اختياري)')
@@ -364,8 +367,8 @@ class BridgeSettingsPage extends Page implements HasForms
             $preview[] = [
                 'target' => $target,
                 'source' => $source,
-                'value'  => $this->formatSampleValue($value) ?? '(فاضي)',
-                'ok'     => $value !== null && $value !== '',
+                'value' => $this->formatSampleValue($value) ?? '(فاضي)',
+                'ok' => $value !== null && $value !== '',
             ];
         }
 
