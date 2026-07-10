@@ -7,6 +7,7 @@ namespace SqlSync\FilamentSqlSync\Filament\Pages;
 use Filament\Actions\Action;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -15,10 +16,12 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Jobs\ReapplyBridgeJob;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
+use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 
 class BridgeSettingsPage extends Page implements HasForms
 {
@@ -78,15 +81,117 @@ class BridgeSettingsPage extends Page implements HasForms
         ]);
     }
 
+    /**
+     * Latest SyncedRecord — used as the "worked example" data set the
+     * user sees while configuring mappings. Null means no sync has
+     * happened yet, in which case the Blade view shows a friendly
+     * "connect the Agent first" hint instead of an empty preview.
+     */
+    public function getSampleRecord(): ?SyncedRecord
+    {
+        return SyncedRecord::query()
+            ->latest('synced_at')
+            ->first();
+    }
+
+    /**
+     * Flattens the latest record into dot-notation paths -> sample values.
+     *
+     * Example output:
+     *   [
+     *     'name'                 => 'Panadol 500mg',
+     *     'quantity'             => 42,
+     *     'extra_data.sel_price' => 150,
+     *     'extra_data.price_4'   => 145,
+     *     ...
+     *   ]
+     *
+     * Drives BOTH the sample-data table AND the Select dropdowns on
+     * the mapping fields — so the options the user picks from are
+     * exactly the paths in the sample they see above.
+     */
+    public function getAvailablePaths(): array
+    {
+        $record = $this->getSampleRecord();
+        if (! $record) {
+            return [];
+        }
+
+        return $this->flattenRecordPaths($record->toArray());
+    }
+
+    private function flattenRecordPaths(array $data, string $prefix = ''): array
+    {
+        // Internal columns the user shouldn't be mapping FROM
+        $skip = ['id', 'created_at', 'updated_at', 'agent_id', 'preset', 'company_id'];
+        $out = [];
+
+        foreach ($data as $key => $value) {
+            if ($prefix === '' && in_array($key, $skip, true)) {
+                continue;
+            }
+
+            $path = $prefix === '' ? $key : "{$prefix}.{$key}";
+
+            if (is_array($value) && ! empty($value) && ! array_is_list($value)) {
+                $out = array_merge($out, $this->flattenRecordPaths($value, $path));
+                continue;
+            }
+
+            $out[$path] = $value;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Formats options for the Select dropdowns as "path (= sample value)"
+     * so the user sees the actual data they'd pull without cross-referencing
+     * the preview table above.
+     */
+    private function pathOptions(): array
+    {
+        $paths = $this->getAvailablePaths();
+        $out = [];
+
+        foreach ($paths as $path => $value) {
+            $sample = $this->formatSampleValue($value);
+            $out[$path] = $sample === null ? $path : "{$path}  (= {$sample})";
+        }
+
+        return $out;
+    }
+
+    private function formatSampleValue(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (is_scalar($value)) {
+            $s = (string) $value;
+            return mb_strlen($s) > 30 ? mb_substr($s, 0, 30).'…' : $s;
+        }
+        return null;
+    }
+
     public function form(Schema $schema): Schema
     {
+        // Options list is computed ONCE per form render. If sync produces
+        // new fields (e.g. a preset update adds price_36 next week), the
+        // user just reloads this page to see them.
+        $pathOptions = $this->pathOptions();
+        $hasData     = ! empty($pathOptions);
+
         return $schema->components([
             Section::make('التفعيل والموديل الهدف')
                 ->description('حدد موديل المنتج الخاص بمشروعك — كل مشروع بيقدر يكون مختلف كلياً.')
                 ->schema([
                     Toggle::make('enabled')
                         ->label('تفعيل الربط التلقائي')
-                        ->helperText('عند التفعيل، أي عنصر يتزامن من الامين/البيان بينحدّث تلقائياً بجدول منتجاتك.'),
+                        ->helperText('عند التفعيل، أي عنصر يتزامن من الأمين/البيان بينحدّث تلقائياً بجدول منتجاتك.'),
 
                     TextInput::make('target_model')
                         ->label('اسم الـ Model بالكامل (Fully Qualified Class Name)')
@@ -99,21 +204,28 @@ class BridgeSettingsPage extends Page implements HasForms
             Section::make('عمود المطابقة')
                 ->description('كيف بنعرف إنو هاد الصنف موجود أصلاً بجدولك؟')
                 ->schema([
-                    TextInput::make('match_source')
+                    // Was TextInput — user had to memorize field names. Now Select
+                    // with real paths from the actual last-synced record.
+                    Select::make('match_source')
                         ->label('الحقل بالسجل المتزامَن')
-                        ->placeholder('barcode')
-                        ->helperText('يدعم extra_data.اسم_الحقل لأسعار/وحدات الامين، مثل extra_data.mtRetail')
+                        ->options($pathOptions)
+                        ->searchable()
+                        ->native(false)
+                        ->helperText($hasData
+                            ? 'اختر الحقل — القيمة يمين اسم الحقل هي عيّنة من آخر سجل مزامَن.'
+                            : '⚠ لا يوجد بيانات مزامنة بعد. اربط الوكيل وقم بأول مزامنة، ثم ارجع لهذه الصفحة لتشوف الحقول المتاحة.')
                         ->required(),
 
                     TextInput::make('match_target')
                         ->label('العمود بجدولك')
                         ->placeholder('sku')
+                        ->helperText('اسم العمود في جدول المنتجات عندك (مثلاً barcode أو sku)')
                         ->required(),
                 ])
                 ->columns(2),
 
             Section::make('تعيين الحقول (Field Mapping)')
-                ->description('أي أعمدة بجدولك بدك تنحدّث تلقائياً، ومن وين تجيب قيمتها.')
+                ->description('أي أعمدة بجدولك بدك تنحدّث تلقائياً، ومن وين تجيب قيمتها. القيمة المعروضة بجانب الحقل هي القيمة الفعلية من آخر مزامنة — بتقدر تتأكد إنك عم تربط الحقل الصح قبل ما تحفظ.')
                 ->schema([
                     Repeater::make('fields')
                         ->label('')
@@ -121,15 +233,29 @@ class BridgeSettingsPage extends Page implements HasForms
                             TextInput::make('target')
                                 ->label('العمود بجدولك')
                                 ->placeholder('price')
+                                ->helperText('اسم العمود في جدول المنتجات عندك')
                                 ->required(),
-                            TextInput::make('source')
+
+                            Select::make('source')
                                 ->label('الحقل بالسجل المتزامَن')
-                                ->placeholder('extra_data.mtRetail')
+                                ->options($pathOptions)
+                                ->searchable()
+                                ->native(false)
+                                ->helperText($hasData
+                                    ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
+                                    : '⚠ لا يوجد بيانات بعد — اربط الوكيل أولاً')
                                 ->required(),
                         ])
                         ->columns(2)
                         ->addActionLabel('إضافة حقل')
-                        ->reorderable(false),
+                        ->reorderable(false)
+                        // Nice collapsed label so the user can see all their
+                        // mappings at a glance: "price ← extra_data.sel_price"
+                        ->itemLabel(fn (array $state): ?string =>
+                            filled($state['target'] ?? null) && filled($state['source'] ?? null)
+                                ? ($state['target'].' ← '.$state['source'])
+                                : null
+                        ),
                 ]),
 
             Section::make('التصنيف التلقائي (اختياري)')
@@ -139,9 +265,12 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->label('اسم الـ Model بالكامل')
                         ->placeholder('App\\Models\\Category'),
 
-                    TextInput::make('category_source')
+                    Select::make('category_source')
                         ->label('الحقل بالسجل المتزامَن')
-                        ->placeholder('group_name'),
+                        ->options($pathOptions)
+                        ->searchable()
+                        ->native(false)
+                        ->placeholder('اختر الحقل يلي بيحدد اسم الفئة'),
 
                     TextInput::make('category_match_column')
                         ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
@@ -201,6 +330,47 @@ class BridgeSettingsPage extends Page implements HasForms
         $key = ReapplyBridgeJob::cacheKey($setting->company_id);
 
         return Cache::get($key);
+    }
+
+    /**
+     * Live preview: for each currently-configured mapping, what value
+     * would actually get written to the product table if we bridged
+     * the sample record right now.
+     *
+     * Rendered by the Blade view below the form. The user watches this
+     * table update as they edit — no save + reapply + refresh + peek
+     * at the DB dance anymore.
+     *
+     * @return array<int, array{target: string, source: string, value: string, ok: bool}>
+     */
+    public function getMappingPreview(): array
+    {
+        $record = $this->getSampleRecord();
+        if (! $record) {
+            return [];
+        }
+
+        $recordArray = $record->toArray();
+        $fields = $this->data['fields'] ?? [];
+
+        $preview = [];
+        foreach ($fields as $mapping) {
+            $target = $mapping['target'] ?? null;
+            $source = $mapping['source'] ?? null;
+            if (! $target || ! $source) {
+                continue;
+            }
+
+            $value = Arr::get($recordArray, $source);
+            $preview[] = [
+                'target' => $target,
+                'source' => $source,
+                'value'  => $this->formatSampleValue($value) ?? '(فاضي)',
+                'ok'     => $value !== null && $value !== '',
+            ];
+        }
+
+        return $preview;
     }
 
     public function save(): void
