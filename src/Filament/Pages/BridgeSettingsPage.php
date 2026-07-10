@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Jobs\ReapplyBridgeJob;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
@@ -68,6 +69,75 @@ class BridgeSettingsPage extends Page implements HasForms
      * @return array{level: string, message: string}|null
      *                                                    null means no obvious problem detected.
      */
+    /**
+     * Proactively scans the target Product table's schema for columns
+     * that WILL cause every single creation to fail — NOT NULL, no
+     * database default, not auto-increment — and cross-references them
+     * against everything the Bridge configuration currently covers
+     * ('fields' targets, create_defaults keys, match_target,
+     * category_target_field).
+     *
+     * This exists because of a real support session: the same class of
+     * error (SQLSTATE 1364 'field X doesn't have a default value') got
+     * discovered THREE separate times, one column at a time, only by
+     * running a full 17k-row sync and reading exception text out of
+     * Bridge Activity logs. That's a fundamentally reactive way to
+     * find missing schema coverage — this audit answers the same
+     * question upfront, before wasting a sync cycle on it.
+     *
+     * @return array<int, string> column names with no coverage — empty
+     *                            array means the schema audit found nothing uncovered (though
+     *                            this can't catch every possible failure mode, e.g. app-level
+     *                            validation rules or non-NOT-NULL uniqueness constraints).
+     */
+    public function getRequiredColumnsAudit(): array
+    {
+        $setting = BridgeSetting::current();
+
+        if (blank($setting->target_model) || ! class_exists((string) $setting->target_model)) {
+            return [];
+        }
+
+        try {
+            $modelClass = $setting->target_model;
+            $model = new $modelClass;
+            $table = $model->getTable();
+            $connection = $model->getConnectionName() ?: config('database.default');
+
+            $columns = DB::connection($connection)->select(
+                'SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
+                 FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()',
+                [$table]
+            );
+        } catch (\Throwable) {
+            // Can't introspect (unsupported DB driver, permissions,
+            // whatever) — fail silently rather than break the settings
+            // page over a nice-to-have audit.
+            return [];
+        }
+
+        $covered = array_merge(
+            array_keys($setting->fields ?? []),
+            array_keys($setting->create_defaults ?? []),
+            array_filter([$setting->match_target, $setting->category_target_field]),
+            ['id', 'created_at', 'updated_at', 'deleted_at']
+        );
+
+        $missing = [];
+        foreach ($columns as $col) {
+            $isRequired = $col->IS_NULLABLE === 'NO'
+                && $col->COLUMN_DEFAULT === null
+                && ! str_contains((string) $col->EXTRA, 'auto_increment');
+
+            if ($isRequired && ! in_array($col->COLUMN_NAME, $covered, true)) {
+                $missing[] = $col->COLUMN_NAME;
+            }
+        }
+
+        return $missing;
+    }
+
     public function getDiagnosis(): ?array
     {
         $setting = BridgeSetting::current();

@@ -1,5 +1,30 @@
 <x-filament-panels::page>
 
+    {{-- ── Required columns audit: proactive schema check ────────────
+         Scans the target Products table for NOT NULL / no-default
+         columns that aren't covered by ANY Bridge configuration (fields,
+         create_defaults, match_target, category_target_field). Every one
+         of these WILL cause insert to fail for every single new product
+         — better to catch that here than discover it one exception at a
+         time after running a full sync against thousands of rows. ──── --}}
+    @php($missingColumns = $this->getRequiredColumnsAudit())
+
+    @if (!empty($missingColumns))
+        <div style="padding: 16px; margin-bottom: 24px; border-radius: 8px;
+            background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.35);">
+            <p style="margin: 0; font-weight: 600; color: rgb(185, 28, 28);">
+                🛑 هاي الأعمدة إجبارية بجدول المنتجات عندك ومش مغطاة بأي إعداد هون:
+            </p>
+            <p style="margin: 8px 0 0 0; font-family: monospace; direction: ltr; text-align: right; color: rgb(185, 28, 28);">
+                {{ implode('  •  ', $missingColumns) }}
+            </p>
+            <p style="margin: 8px 0 0 0; color: rgb(107, 114, 128); font-size: 13px;">
+                لو ما عالجتها، كل محاولة إنشاء منتج جديد رح تفشل بنفس الخطأ (Field 'X' doesn't have a default value).
+                ضيفها إما بقسم "تعيين الحقول" (لو القيمة جايّة من البيانات المتزامنة)، أو بقسم "قيم افتراضية عند إنشاء منتج جديد" (لو قيمة ثابتة).
+            </p>
+        </div>
+    @endif
+
     {{-- ── Diagnostic banner: pinpoints the #1 reason Products stay at 0
          despite records syncing successfully — the exact confusion that
          made this page hard to debug even for the developer himself.
