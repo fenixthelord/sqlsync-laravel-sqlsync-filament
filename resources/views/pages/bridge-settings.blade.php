@@ -1,5 +1,22 @@
 <x-filament-panels::page>
 
+    {{-- ── Diagnostic banner: pinpoints the #1 reason Products stay at 0
+         despite records syncing successfully — the exact confusion that
+         made this page hard to debug even for the developer himself.
+         Shows the FIRST applicable issue, not every possible problem at
+         once, and tells you exactly which section below to fix. ────── --}}
+    @php($diagnosis = $this->getDiagnosis())
+
+    @if ($diagnosis)
+        <div style="padding: 16px; margin-bottom: 24px; border-radius: 8px;
+            background: {{ $diagnosis['level'] === 'danger' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)' }};
+            border: 1px solid {{ $diagnosis['level'] === 'danger' ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)' }};">
+            <p style="margin: 0; font-weight: 600; color: {{ $diagnosis['level'] === 'danger' ? 'rgb(185, 28, 28)' : 'rgb(180, 83, 9)' }};">
+                {{ $diagnosis['level'] === 'danger' ? '🛑' : '⚠️' }} {{ $diagnosis['message'] }}
+            </p>
+        </div>
+    @endif
+
     {{-- ── Sample data preview: the non-technical user's cheat sheet ────
          Shows the LATEST synced record's fields with their real values.
          The Field Mapping dropdowns below let you pick the same paths
@@ -74,6 +91,24 @@
     </x-filament::section>
 
     <div style="margin-top: 24px;"></div>
+
+    {{-- ── Quick-fill for the known Al-Bayan pharmacy pattern ──────────
+         Removes the part of setup that required reverse-engineering
+         Al-Bayan's internal schema (which took real database digging
+         even for the developer) — pre-fills everything confirmed from
+         that investigation, leaves only project-specific target columns
+         for manual entry. ──────────────────────────────────────────── --}}
+    <x-filament::button
+        type="button"
+        color="gray"
+        icon="heroicon-o-sparkles"
+        wire:click="applyAlBayanPharmacyDefaults"
+        wire:confirm="هاد رح يعبّي match_source، fallback matching، وquestion category تلقائياً بالقيم المعروفة من البيان. القيم الحالية بهاي الحقول رح تتبدّل. أكمل؟"
+    >
+        تعبئة تلقائية — صيدلية بالبيان (Al-Bayan)
+    </x-filament::button>
+
+    <div style="margin-top: 12px;"></div>
 
     {{-- ── Form ───────────────────────────────────────────────────────── --}}
     <form wire:submit="save">
