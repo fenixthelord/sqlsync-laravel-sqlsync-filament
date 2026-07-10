@@ -97,12 +97,12 @@ class ResetPage extends Page implements HasForms
                     : 'ما فيه Product Bridge معرّف حالياً (target_model فاضي)، فهاد الخيار مش متاح.')
                 ->schema([
                     Checkbox::make('also_delete_products')
-                        ->label('نعم، احذف كل المنتجات من ' . ($targetModel ?? '(غير معرّف)') . ' كمان')
+                        ->label('نعم، احذف كل المنتجات من '.($targetModel ?? '(غير معرّف)').' كمان')
                         ->disabled(blank($targetModel)),
                 ]),
 
             Section::make('التأكيد')
-                ->description("للتأكيد، اكتب كلمة RESET بالحقل تحت (بأحرف كبيرة بالضبط)، وبعدها اضغط الزر الأحمر تحت.")
+                ->description('للتأكيد، اكتب كلمة RESET بالحقل تحت (بأحرف كبيرة بالضبط)، وبعدها اضغط الزر الأحمر تحت.')
                 ->schema([
                     TextInput::make('confirm_phrase')
                         ->label('اكتب RESET للتأكيد')
@@ -121,9 +121,9 @@ class ResetPage extends Page implements HasForms
         $categories = CategoryNode::count();
 
         return "هاد رح يمسح بشكل نهائي: {$records} سجل متزامَن (sqlsync_records)، "
-            . "{$logs} سجل مزامنة (sqlsync_logs)، {$bridgeLogs} سجل نشاط ربط (sqlsync_bridge_logs)، "
-            . "و{$categories} عقدة تصنيف (sqlsync_category_nodes). "
-            . "إعدادات الـ Bridge نفسها (Product Bridge config) ما بتتحذف — تضل زي ما هي.";
+            ."{$logs} سجل مزامنة (sqlsync_logs)، {$bridgeLogs} سجل نشاط ربط (sqlsync_bridge_logs)، "
+            ."و{$categories} عقدة تصنيف (sqlsync_category_nodes). "
+            .'إعدادات الـ Bridge نفسها (Product Bridge config) ما بتتحذف — تضل زي ما هي.';
     }
 
     public function getFormActions(): array
