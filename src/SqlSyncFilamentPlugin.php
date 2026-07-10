@@ -9,6 +9,7 @@ use Filament\Contracts\Plugin;
 use Filament\Facades\Filament;
 use Filament\Panel;
 use SqlSync\FilamentSqlSync\Filament\Pages\BridgeSettingsPage;
+use SqlSync\FilamentSqlSync\Filament\Pages\ResetPage;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\BridgeLogResource\BridgeLogResource;
@@ -40,6 +41,8 @@ class SqlSyncFilamentPlugin implements Plugin
     protected ?bool $showMappings = null;
 
     protected ?bool $showBridge = null;
+
+    protected ?bool $showReset = null;
 
     protected ?Closure $statsCacheKeyCallback = null;
 
@@ -196,6 +199,11 @@ class SqlSyncFilamentPlugin implements Plugin
             'logs' => $this->showLogs ?? (bool) config('sqlsync-filament.features.logs', true),
             'mappings' => $this->showMappings ?? (bool) config('sqlsync-filament.features.mappings', true),
             'bridge' => $this->showBridge ?? (bool) config('sqlsync-filament.features.bridge', true),
+            // Defaults to false, unlike every other feature — this page
+            // permanently deletes data, so it must be an explicit
+            // opt-in via ->withReset(true) or config, never on by
+            // accident on a fresh install.
+            'reset' => $this->showReset ?? (bool) config('sqlsync-filament.features.reset', false),
             default => false,
         };
     }
@@ -226,6 +234,10 @@ class SqlSyncFilamentPlugin implements Plugin
             $resources[] = BridgeLogResource::class;
         }
 
+        if ($this->isFeatureEnabled('reset')) {
+            $pages[] = ResetPage::class;
+        }
+
         $panel
             ->resources($resources)
             ->pages($pages);
@@ -248,6 +260,13 @@ class SqlSyncFilamentPlugin implements Plugin
     public function withBridge(bool $show = true): static
     {
         $this->showBridge = $show;
+
+        return $this;
+    }
+
+    public function withReset(bool $show = true): static
+    {
+        $this->showReset = $show;
 
         return $this;
     }
