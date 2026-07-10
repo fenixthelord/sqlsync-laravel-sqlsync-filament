@@ -251,10 +251,9 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->reorderable(false)
                         // Nice collapsed label so the user can see all their
                         // mappings at a glance: "price ← extra_data.sel_price"
-                        ->itemLabel(fn (array $state): ?string =>
-                            filled($state['target'] ?? null) && filled($state['source'] ?? null)
-                                ? ($state['target'].' ← '.$state['source'])
-                                : null
+                        ->itemLabel(fn (array $state): ?string => (filled($state['target'] ?? null) && filled($state['source'] ?? null))
+                            ? ($state['target'].' ← '.$state['source'])
+                            : null
                         ),
                 ]),
 
