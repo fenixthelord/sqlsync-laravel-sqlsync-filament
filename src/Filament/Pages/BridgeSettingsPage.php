@@ -67,6 +67,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'target_model' => $setting->target_model,
             'match_source' => $setting->match_source,
             'match_target' => $setting->match_target,
+            'fallback_match_fields' => $setting->fallback_match_fields ?? [],
             'fields' => collect($setting->fields ?? [])
                 ->map(fn ($source, $target) => ['target' => $target, 'source' => $source])
                 ->values()
@@ -226,6 +227,41 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->required(),
                 ])
                 ->columns(2),
+
+            Section::make('مطابقة احتياطية (اختياري) — للأصناف بدون باركود')
+                ->description('لو الصنف ما عنده باركود (شائع بمواد صحية/طبية بتباع بالاسم بس)، الحقل يلي فوق (عمود المطابقة الرئيسي) بيضل فاضي وينتحجب الصنف بالكامل. هون تقدر تحدد مطابقة بديلة — مثلاً "الاسم + الماركة" — تستخدم بس لما الحقل الرئيسي فاضي. كل الحقول يلي تحددها هون لازم تتطابق مع بعضها (AND) عشان تعتبر نفس الصنف.')
+                ->schema([
+                    Repeater::make('fallback_match_fields')
+                        ->label('')
+                        ->schema([
+                            TextInput::make('target')
+                                ->label('العمود بجدولك')
+                                ->placeholder('name')
+                                ->helperText('مثلاً name أو brand')
+                                ->required(),
+
+                            Select::make('source')
+                                ->label('الحقل بالسجل المتزامَن')
+                                ->options($pathOptions)
+                                ->searchable()
+                                ->native(false)
+                                ->helperText($hasData
+                                    ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
+                                    : '⚠ لا يوجد بيانات بعد')
+                                ->required(),
+                        ])
+                        ->columns(2)
+                        ->addActionLabel('إضافة حقل للمطابقة الاحتياطية')
+                        ->reorderable(false)
+                        ->helperText('مثال شائع للصيدليات: name ← name  و  brand ← extra_data.origin')
+                        ->itemLabel(function (array $state): ?string {
+                            if (! filled($state['target'] ?? null) || ! filled($state['source'] ?? null)) {
+                                return null;
+                            }
+
+                            return $state['target'].' = '.$state['source'];
+                        }),
+                ]),
 
             Section::make('تعيين الحقول (Field Mapping)')
                 ->description('أي أعمدة بجدولك بدك تنحدّث تلقائياً، ومن وين تجيب قيمتها. القيمة المعروضة بجانب الحقل هي القيمة الفعلية من آخر مزامنة — بتقدر تتأكد إنك عم تربط الحقل الصح قبل ما تحفظ.')
@@ -387,12 +423,18 @@ class BridgeSettingsPage extends Page implements HasForms
             ->mapWithKeys(fn ($row) => [$row['target'] => $row['source']])
             ->all();
 
+        $fallbackMatchFields = collect($state['fallback_match_fields'] ?? [])
+            ->filter(fn ($row) => filled($row['target'] ?? null) && filled($row['source'] ?? null))
+            ->values()
+            ->all();
+
         $setting = BridgeSetting::current();
         $setting->update([
             'enabled' => $state['enabled'] ?? false,
             'target_model' => $state['target_model'] ?? null,
             'match_source' => $state['match_source'] ?? null,
             'match_target' => $state['match_target'] ?? null,
+            'fallback_match_fields' => $fallbackMatchFields,
             'fields' => $fields,
             'create_defaults' => $state['create_defaults'] ?? [],
             'skip_create_if_missing_defaults' => $state['skip_create_if_missing_defaults'] ?? true,
