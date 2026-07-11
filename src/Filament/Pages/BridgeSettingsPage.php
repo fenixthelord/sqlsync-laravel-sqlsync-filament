@@ -20,6 +20,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
+use SqlSync\FilamentSqlSync\Support\SchemaIntrospector;
 use SqlSync\LaravelSqlSync\Jobs\ReapplyBridgeJob;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
 use SqlSync\LaravelSqlSync\Models\SyncedRecord;
@@ -149,6 +150,46 @@ class BridgeSettingsPage extends Page implements HasForms
      *
      * @return array{configured: bool, exists: bool, table: ?string, create_sql: ?string}
      */
+    /**
+     * Real models found in app/Models — powers the smart target_model
+     * Select instead of asking the admin to type a class path.
+     *
+     * @return array<string, string>
+     */
+    public function getDiscoveredModels(): array
+    {
+        return app(SchemaIntrospector::class)->discoverModels();
+    }
+
+    /**
+     * Real columns on the currently-selected target_model's table,
+     * split into required/optional — powers every column-picking Select
+     * on this page (match_target, source_number_column, auto_slug_column,
+     * category_target_field) instead of free-text fields the admin has
+     * to remember by heart.
+     *
+     * @return array<string, string> column name => label with a ⚠ marker for required columns
+     */
+    public function getTargetColumnOptions(): array
+    {
+        $modelClass = $this->data['target_model'] ?? null;
+        if (blank($modelClass)) {
+            return [];
+        }
+
+        $columns = app(SchemaIntrospector::class)
+            ->getTableColumns($modelClass);
+
+        $options = [];
+        foreach ($columns as $col) {
+            $options[$col['name']] = $col['required']
+                ? "{$col['name']}  ⚠ إجباري"
+                : $col['name'];
+        }
+
+        return $options;
+    }
+
     public function getSourceNumberColumnStatus(): array
     {
         $setting = BridgeSetting::current();
@@ -253,6 +294,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'match_target' => $setting->match_target,
             'auto_slug_column' => $setting->auto_slug_column,
             'source_number_column' => $setting->source_number_column,
+            'auto_generate_columns' => $setting->auto_generate_columns ?? [],
             'fallback_match_fields' => $setting->fallback_match_fields ?? [],
             'fields' => collect($setting->fields ?? [])
                 ->map(fn ($source, $target) => ['target' => $target, 'source' => $source])
@@ -384,11 +426,16 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->label('تفعيل الربط التلقائي')
                         ->helperText('عند التفعيل، أي عنصر يتزامن من الأمين/البيان بينحدّث تلقائياً بجدول منتجاتك.'),
 
-                    TextInput::make('target_model')
-                        ->label('اسم الـ Model بالكامل (Fully Qualified Class Name)')
-                        ->placeholder('App\\Models\\Product')
+                    Select::make('target_model')
+                        ->label('موديل المنتج')
+                        ->options($this->getDiscoveredModels())
+                        ->searchable()
+                        ->native(false)
                         ->required()
-                        ->helperText('مثال: App\\Models\\Product'),
+                        ->live()
+                        ->helperText(empty($this->getDiscoveredModels())
+                            ? '⚠ ما قدرنا نلاقي موديلات تلقائياً بمجلد app/Models — تأكد المشروع فيه موديلات فعلاً.'
+                            : 'القائمة مبنية تلقائياً من الموديلات الموجودة فعلياً بمشروعك (app/Models).'),
                 ])
                 ->columns(1),
 
@@ -407,10 +454,14 @@ class BridgeSettingsPage extends Page implements HasForms
                             : '⚠ لا يوجد بيانات مزامنة بعد. اربط الوكيل وقم بأول مزامنة، ثم ارجع لهذه الصفحة لتشوف الحقول المتاحة.')
                         ->required(),
 
-                    TextInput::make('match_target')
+                    Select::make('match_target')
                         ->label('العمود بجدولك')
-                        ->placeholder('sku')
-                        ->helperText('اسم العمود في جدول المنتجات عندك (مثلاً barcode أو sku)')
+                        ->options(fn () => $this->getTargetColumnOptions())
+                        ->searchable()
+                        ->native(false)
+                        ->helperText(empty($this->getTargetColumnOptions())
+                            ? 'اختر موديل المنتج فوق أولاً عشان تظهر أعمدته هون.'
+                            : 'الأعمدة المعلّمة ⚠ إجبارية (NOT NULL بدون قيمة افتراضية) بجدولك.')
                         ->required(),
                 ])
                 ->columns(2),
@@ -418,9 +469,11 @@ class BridgeSettingsPage extends Page implements HasForms
             Section::make('هوية دائمة (إجباري) — أهم إعداد بالصفحة كلها')
                 ->description('الباركود ممكن يتغيّر، الاسم ممكن يتعدّل، وحتى لو انمسحت بيانات SqlSync (زي Danger Zone) بيروح أي ربط مبني عليهم. الحل الوحيد المضمون: رقم الصنف الداخلي من برنامج المحاسبة (لا يتكرر أبداً، لا يتغيّر أبداً) يتخزّن مباشرة كعمود على جدول المنتجات نفسه — هيك حتى لو انمسح كل شي تبع SqlSync، أول مزامنة جاية بتلاقي نفس المنتج فوراً بدون أي اعتماد على باركود أو اسم. هاد الإعداد إجباري ولا يمكن تفعيل الربط بدونه.')
                 ->schema([
-                    TextInput::make('source_number_column')
+                    Select::make('source_number_column')
                         ->label('عمود الهوية الدائمة بجدولك')
-                        ->placeholder('accounting_number')
+                        ->options(fn () => $this->getTargetColumnOptions())
+                        ->searchable()
+                        ->native(false)
                         ->helperText('لازم يكون عمود موجود فعلياً بجدول المنتجات — النظام بيتحقق تلقائياً ويعطيك أمر الإنشاء الجاهز لو ناقص.')
                         ->required()
                         ->live(onBlur: true),
@@ -429,9 +482,11 @@ class BridgeSettingsPage extends Page implements HasForms
             Section::make('توليد Slug تلقائي وآمن (اختياري لكن موصى فيه بشدة)')
                 ->description('لا تربط عمود slug مباشرة بحقل من البيانات المتزامنة (مثل code) — هاد الحقل غالباً فاضي لكتير أصناف أو مش unique، وبيسبب فشل إنشاء كل منتج بهالحالة (Column slug cannot be null / Duplicate entry). بدل هيك، فعّل هالخيار: بيولّد slug تلقائياً من اسم الصنف + معرّف فريد داخلي — مضمون 100% إنه مش فاضي ومش مكرر أبداً.')
                 ->schema([
-                    TextInput::make('auto_slug_column')
+                    Select::make('auto_slug_column')
                         ->label('عمود الـ slug بجدولك')
-                        ->placeholder('slug')
+                        ->options(fn () => $this->getTargetColumnOptions())
+                        ->searchable()
+                        ->native(false)
                         ->helperText('لو حاطط "slug" هون بردو بقسم "تعيين الحقول" تحت، هالإعداد بيفوز دايماً — ما تحتاج تحذفه من هناك يدوياً.'),
                 ]),
 
@@ -529,9 +584,11 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
                         ->placeholder('name'),
 
-                    TextInput::make('category_target_field')
+                    Select::make('category_target_field')
                         ->label('العمود بجدول المنتجات يلي بياخد معرّف الفئة')
-                        ->placeholder('category_id'),
+                        ->options(fn () => $this->getTargetColumnOptions())
+                        ->searchable()
+                        ->native(false),
 
                     TextInput::make('category_slug_column')
                         ->label('عمود الـ slug بجدول الفئات (اتركه فاضي إذا مافي)')
@@ -669,6 +726,152 @@ class BridgeSettingsPage extends Page implements HasForms
      * leaves only the part that's inherently project-specific: what your
      * own Product table's columns are called.
      */
+    /**
+     * The core "smart wizard" behavior: examines the real columns on
+     * the selected target model's table, the real fields available
+     * from the latest synced record, and pre-fills reasonable guesses
+     * across match_target, source_number_column, auto_slug_column,
+     * category_target_field, and the fields repeater — using
+     * SchemaIntrospector::suggestSource()'s name-similarity + populated-
+     * sample-value heuristic.
+     *
+     * Never silently overwrites values the admin already set — only
+     * fills genuinely empty fields, so running this twice (or after
+     * manual tweaks) is always safe.
+     */
+    public function runSmartSuggest(): void
+    {
+        $modelClass = $this->data['target_model'] ?? null;
+        if (blank($modelClass)) {
+            Notification::make()
+                ->title('اختر موديل المنتج أولاً')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $introspector = app(SchemaIntrospector::class);
+        $columns = $introspector->getTableColumns($modelClass);
+        $sampleFields = $this->getAvailablePaths();
+
+        if (empty($sampleFields)) {
+            Notification::make()
+                ->title('لا يوجد بيانات مزامنة بعد')
+                ->body('اربط الوكيل وشغّل أول مزامنة قبل ما تقدر تستخدم الاقتراح الذكي.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $suggestedCount = 0;
+        $unmatchedRequired = [];
+
+        // match_target: prefer an obvious barcode/sku-like column
+        if (blank($this->data['match_target'] ?? null)) {
+            foreach ($columns as $col) {
+                $guess = $introspector->suggestSource($col['name'], $sampleFields);
+                if ($guess === 'barcode') {
+                    $this->data['match_target'] = $col['name'];
+                    $this->data['match_source'] = 'barcode';
+                    $suggestedCount++;
+                    break;
+                }
+            }
+        }
+
+        // fields: for every non-required, non-already-covered column,
+        // suggest a mapping if the heuristic is confident enough
+        $existingFieldTargets = collect($this->data['fields'] ?? [])->pluck('target')->all();
+        $newFieldSuggestions = [];
+
+        foreach ($columns as $col) {
+            if ($col['auto_increment']) {
+                continue;
+            }
+            if (in_array($col['name'], $existingFieldTargets, true)) {
+                continue;
+            }
+            if ($col['name'] === ($this->data['match_target'] ?? null)) {
+                continue;
+            }
+
+            $guess = $introspector->suggestSource($col['name'], $sampleFields);
+
+            if ($guess !== null) {
+                $newFieldSuggestions[] = ['target' => $col['name'], 'source' => $guess];
+                $suggestedCount++;
+            } elseif ($col['required']) {
+                $unmatchedRequired[] = $col['name'];
+            }
+        }
+
+        if (! empty($newFieldSuggestions)) {
+            $this->data['fields'] = array_merge($this->data['fields'] ?? [], $newFieldSuggestions);
+        }
+
+        // Slug: if there's a 'slug' column with no confident source
+        // suggestion, recommend auto-generation rather than a raw
+        // (likely unsafe) field mapping — the lesson learned this
+        // whole session.
+        $slugColumn = collect($columns)->firstWhere('name', 'slug');
+        if ($slugColumn && blank($this->data['auto_slug_column'] ?? null)) {
+            $this->data['auto_slug_column'] = 'slug';
+            $unmatchedRequired = array_diff($unmatchedRequired, ['slug']);
+            $suggestedCount++;
+        }
+
+        $this->unmatchedRequiredColumns = array_values($unmatchedRequired);
+
+        $body = $suggestedCount > 0
+            ? "تم اقتراح {$suggestedCount} إعداد تلقائياً. راجعهم قبل الحفظ."
+            : 'ما لقينا اقتراحات جديدة — راجع الأعمدة يدوياً.';
+
+        if (! empty($unmatchedRequired)) {
+            $body .= ' ⚠ '.count($unmatchedRequired).' عمود إجباري بدون مصدر واضح — شوف قسم "أعمدة محتاجة قرار" تحت.';
+        }
+
+        Notification::make()
+            ->title('الاقتراح الذكي')
+            ->body($body)
+            ->success()
+            ->send();
+    }
+
+    public ?array $unmatchedRequiredColumns = null;
+
+    /**
+     * For a required column with no confident auto-suggestion, the
+     * admin picks one of two resolutions per column: a fixed value
+     * (goes to create_defaults) or auto-generated uniqueness (goes to
+     * auto_generate_columns). Called from the Blade view's per-column
+     * action buttons.
+     */
+    public function resolveUnmatchedColumn(string $column, string $mode, ?string $fixedValue = null): void
+    {
+        if ($mode === 'fixed') {
+            $defaults = $this->data['create_defaults'] ?? [];
+            $defaults[$column] = $fixedValue ?? '';
+            $this->data['create_defaults'] = $defaults;
+        } elseif ($mode === 'auto_generate') {
+            $auto = $this->data['auto_generate_columns'] ?? [];
+            if (! in_array($column, $auto, true)) {
+                $auto[] = $column;
+            }
+            $this->data['auto_generate_columns'] = $auto;
+        }
+
+        $this->unmatchedRequiredColumns = array_values(
+            array_diff($this->unmatchedRequiredColumns ?? [], [$column])
+        );
+
+        Notification::make()
+            ->title("تم تحديد \"{$column}\"")
+            ->success()
+            ->send();
+    }
+
     public function applyAlBayanPharmacyDefaults(): void
     {
         $this->form->fill(array_merge($this->data, [
@@ -760,6 +963,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'match_target' => $state['match_target'] ?? null,
             'auto_slug_column' => $state['auto_slug_column'] ?? null,
             'source_number_column' => $state['source_number_column'] ?? null,
+            'auto_generate_columns' => $state['auto_generate_columns'] ?? [],
             'fallback_match_fields' => $fallbackMatchFields,
             'fields' => $fields,
             'create_defaults' => $state['create_defaults'] ?? [],

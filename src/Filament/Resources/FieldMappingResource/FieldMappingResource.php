@@ -270,6 +270,36 @@ class FieldMappingResource extends Resource
                 'mtPriceType' => 'mtPriceType — نوع السعر',
                 'mtSellType' => 'mtSellType — نوع البيع',
             ],
+            // Was completely empty until now — every Al-Bayan customer
+            // (Saati Pharmacy, Alaa Pharmacy, any future one) opening
+            // this page got a blank Source Field dropdown with no way
+            // to add a single mapping. Field names match extra_data's
+            // actual keys as produced by AlBayanPreset.cs on the Agent
+            // side (see Presets/AlBayanPreset.cs) — sel_price/regular_
+            // price/price_1..35/etc.
+            'al_bayan' => [
+                'sel_price' => 'sel_price — سعر البيع',
+                'regular_price' => 'regular_price — السعر الاعتيادي',
+                'cost_price' => 'cost_price — سعر التكلفة',
+                'price_1' => 'price_1 — سعر 1',
+                'price_2' => 'price_2 — سعر 2',
+                'price_3' => 'price_3 — سعر 3',
+                'price_4' => 'price_4 — سعر 4',
+                'price_5' => 'price_5 — سعر 5',
+                'price_21' => 'price_21 — سعر 21',
+                'price_22' => 'price_22 — سعر 22',
+                'price_23' => 'price_23 — سعر 23',
+                'price_24' => 'price_24 — سعر 24',
+                'price_25' => 'price_25 — سعر 25',
+                'price_31' => 'price_31 — سعر 31',
+                'price_32' => 'price_32 — سعر 32',
+                'price_33' => 'price_33 — سعر 33',
+                'price_34' => 'price_34 — سعر 34',
+                'price_35' => 'price_35 — سعر 35',
+                'price_last' => 'price_last — آخر سعر',
+                'origin' => 'origin — المنشأ / الماركة',
+                'group_guid' => 'group_guid — رقم التصنيف الشجري الخام',
+            ],
             default => [],
         };
     }

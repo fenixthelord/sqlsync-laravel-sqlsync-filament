@@ -117,6 +117,23 @@
 
     <div style="margin-top: 24px;"></div>
 
+    {{-- ── Smart Suggest: the real "wizard" intelligence ────────────────
+         Examines the actual columns on the target model's table + the
+         actual synced sample data, and pre-fills reasonable guesses
+         across the whole form — the admin reviews/confirms instead of
+         typing everything from a blank page. Generic, works for ANY
+         preset or customer schema, not just Al-Bayan. ────────────────── --}}
+    <x-filament::button
+        type="button"
+        color="primary"
+        icon="heroicon-o-light-bulb"
+        wire:click="runSmartSuggest"
+    >
+        اقتراح ذكي — اكتشف واقترح تلقائياً
+    </x-filament::button>
+
+    <div style="margin-top: 12px;"></div>
+
     {{-- ── Quick-fill for the known Al-Bayan pharmacy pattern ──────────
          Removes the part of setup that required reverse-engineering
          Al-Bayan's internal schema (which took real database digging
@@ -134,6 +151,45 @@
     </x-filament::button>
 
     <div style="margin-top: 12px;"></div>
+
+    {{-- ── Unmatched required columns — need a human decision ──────────
+         For every required column Smart Suggest couldn't confidently
+         map, offer exactly two resolutions: a fixed value, or an
+         auto-generated guaranteed-unique value. No third silent option
+         — every required column MUST be explicitly resolved one way or
+         the other before this list can be trusted as empty. ─────────── --}}
+    @if (!empty($unmatchedRequiredColumns))
+        <div style="padding: 16px; margin-bottom: 16px; border-radius: 8px;
+            background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35);">
+            <p style="margin: 0 0 12px 0; font-weight: 600; color: rgb(180, 83, 9);">
+                ⚠ أعمدة محتاجة قرار — إجبارية ومالها اقتراح واضح من البيانات المتزامنة
+            </p>
+
+            @foreach ($unmatchedRequiredColumns as $col)
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px; background: white; border-radius: 4px;">
+                    <span style="font-family: monospace; font-weight: 600; min-width: 140px;">{{ $col }}</span>
+
+                    <input
+                        type="text"
+                        placeholder="قيمة ثابتة..."
+                        wire:key="fixed-{{ $col }}"
+                        x-data
+                        x-on:keydown.enter="$wire.resolveUnmatchedColumn('{{ $col }}', 'fixed', $event.target.value)"
+                        style="flex: 1; padding: 6px 10px; border: 1px solid rgb(209, 213, 219); border-radius: 4px; font-size: 13px;"
+                    />
+
+                    <x-filament::button
+                        type="button"
+                        size="sm"
+                        color="gray"
+                        wire:click="resolveUnmatchedColumn('{{ $col }}', 'auto_generate')"
+                    >
+                        ولّد قيمة فريدة تلقائياً
+                    </x-filament::button>
+                </div>
+            @endforeach
+        </div>
+    @endif
 
     {{-- ── Source number column live status — checks the ACTUAL database
          schema, not just whether the admin typed something. This is the
