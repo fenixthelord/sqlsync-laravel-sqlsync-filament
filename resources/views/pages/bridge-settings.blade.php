@@ -319,4 +319,70 @@
             @endif
         </x-filament::section>
     </div>
+
+    {{-- ── Stale records report — human review only, never automatic ───
+         See StaleRecordsReportService for the full reasoning: this is
+         ONLY meaningful relative to a genuine Force Full Resync, since
+         an ordinary incremental sync cycle can never distinguish
+         "quietly unchanged for months" from "deleted at the source" —
+         both look identical (no incoming row) from the receiving end. --}}
+    @php($staleReport = $this->getStaleRecordsReport())
+
+    <div style="margin-top: 32px;">
+        <x-filament::section icon="heroicon-o-archive-box-x-mark" icon-color="warning">
+            <x-slot name="heading">
+                أصناف مرشّحة للمراجعة (احتمال حذف من المصدر)
+            </x-slot>
+
+            <x-slot name="description">
+                هاد تقرير للمراجعة اليدوية فقط — مافي أي حذف أو تعطيل تلقائي لأي منتج، بأي حال. لازم إنسان يراجع كل صنف
+                ويقرر بنفسه، لأنه أي صنف هون ممكن يكون مستخدم فعلياً بطلبية أو باقة منتجات على الموقع.
+            </x-slot>
+
+            @if (!$staleReport['reliable'])
+                <div style="padding: 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; margin-bottom: 16px;">
+                    <p style="margin: 0; color: rgb(180, 83, 9); font-weight: 600;">
+                        ⚠ التقرير مش موثوق حالياً — آخر مسح كامل (Force Full Resync) واضح إنه
+                        @if ($staleReport['last_full_sync_estimate'])
+                            كان {{ $staleReport['last_full_sync_estimate']->diffForHumans() }}
+                        @else
+                            ما صار أبداً
+                        @endif
+                        . المزامنة العادية (incremental) ما بتلمس الأصناف الثابتة يلي ما تغيّرت، فبتظهر هون وكأنها
+                        محذوفة رغم إنها موجودة وبس ما تغيّرت. اضغط "Force Full Resync" بالويندوز أولاً، واستنى
+                        يخلص، وبعدها ارجع هون.
+                    </p>
+                </div>
+            @endif
+
+            @if ($staleReport['candidates']->isEmpty())
+                <p style="color: rgb(107, 114, 128);">لا يوجد أصناف مرشّحة حالياً.</p>
+            @else
+                <div style="max-height: 350px; overflow-y: auto; border: 1px solid rgb(229, 231, 235); border-radius: 6px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead style="background: rgba(245, 158, 11, 0.06); position: sticky; top: 0;">
+                            <tr>
+                                <th style="text-align: right; padding: 8px 12px;">الصنف</th>
+                                <th style="text-align: right; padding: 8px 12px;">الباركود / الكود</th>
+                                <th style="text-align: right; padding: 8px 12px;">آخر ظهور بالمزامنة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($staleReport['candidates'] as $row)
+                                <tr style="border-bottom: 1px solid rgb(243, 244, 246);">
+                                    <td style="padding: 6px 12px;">{{ $row->name }}</td>
+                                    <td style="padding: 6px 12px; font-family: monospace; direction: ltr; text-align: right;">
+                                        {{ $row->barcode ?? $row->code ?? '—' }}
+                                    </td>
+                                    <td style="padding: 6px 12px; color: rgb(107, 114, 128);">
+                                        {{ $row->synced_at?->diffForHumans() ?? '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </x-filament::section>
+    </div>
 </x-filament-panels::page>

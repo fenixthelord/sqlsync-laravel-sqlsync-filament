@@ -24,6 +24,7 @@ use SqlSync\LaravelSqlSync\Jobs\ReapplyBridgeJob;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
 use SqlSync\LaravelSqlSync\Models\SyncedRecord;
 use SqlSync\LaravelSqlSync\Services\BridgeDryRunService;
+use SqlSync\LaravelSqlSync\Services\StaleRecordsReportService;
 
 class BridgeSettingsPage extends Page implements HasForms
 {
@@ -533,6 +534,23 @@ class BridgeSettingsPage extends Page implements HasForms
         $key = ReapplyBridgeJob::cacheKey($setting->company_id);
 
         return Cache::get($key);
+    }
+
+    /**
+     * Report-only — deletion candidates for human review. See
+     * StaleRecordsReportService's docblock for exactly why this is
+     * ONLY trustworthy after a genuine Force Full Resync, and why an
+     * ordinary incremental sync cycle can never distinguish "quietly
+     * unchanged" from "deleted at the source". Nothing here ever
+     * deletes or deactivates a product automatically — by explicit
+     * decision, that's too dangerous to automate (a flagged item could
+     * be referenced by an existing order, a bundle, anything).
+     */
+    public function getStaleRecordsReport(): array
+    {
+        $setting = BridgeSetting::current();
+
+        return app(StaleRecordsReportService::class)->report($setting->company_id);
     }
 
     /**
