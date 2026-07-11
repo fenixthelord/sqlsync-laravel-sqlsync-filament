@@ -299,7 +299,11 @@ class BridgeSettingsPage extends Page implements HasForms
             'auto_generate_columns' => $setting->auto_generate_columns ?? [],
             'fallback_match_fields' => $setting->fallback_match_fields ?? [],
             'fields' => collect($setting->fields ?? [])
-                ->map(fn ($source, $target) => ['target' => $target, 'source' => $source])
+                ->map(fn ($source, $target) => [
+                    'target' => $target,
+                    'source' => $source,
+                    'default' => data_get($setting->create_defaults ?? [], $target),
+                ])
                 ->values()
                 ->all(),
             'create_defaults' => $setting->create_defaults ?? [],
@@ -554,8 +558,13 @@ class BridgeSettingsPage extends Page implements HasForms
                                                 ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
                                                 : '⚠ لا يوجد بيانات بعد — اربط الوكيل أولاً')
                                             ->required(),
+
+                                        TextInput::make('default')
+                                            ->label('قيمة احتياطية لو فاضي (اختياري)')
+                                            ->placeholder('0')
+                                            ->helperText('لو "'.'الحقل بالسجل المتزامَن'.'" فاضي لصنف معيّن (مثلاً سعر مش محدد بعد بالمحاسبة)، هاي القيمة تنكتب بدالها — بدل ما يفشل الإنشاء بالكامل.'),
                                     ])
-                                    ->columns(2)
+                                    ->columns(3)
                                     ->addActionLabel('إضافة حقل')
                                     ->reorderable(false)
                                     ->itemLabel(function (array $state): ?string {
@@ -563,7 +572,12 @@ class BridgeSettingsPage extends Page implements HasForms
                                             return null;
                                         }
 
-                                        return $state['target'].' ← '.$state['source'];
+                                        $label = $state['target'].' ← '.$state['source'];
+                                        if (filled($state['default'] ?? null)) {
+                                            $label .= '  (احتياطي: '.$state['default'].')';
+                                        }
+
+                                        return $label;
                                     }),
                             ]),
 
@@ -983,6 +997,22 @@ class BridgeSettingsPage extends Page implements HasForms
             ->mapWithKeys(fn ($row) => [$row['target'] => $row['source']])
             ->all();
 
+        // Per-field fallback values (entered right next to the mapping
+        // itself, in the same Repeater row) merge into create_defaults
+        // automatically — the admin shouldn't have to remember to also
+        // visit a separate wizard step to configure a default for a
+        // column they JUST mapped. Per-field values win over anything
+        // manually entered in the standalone create_defaults KeyValue
+        // for the same column, since they're the more specific,
+        // contextual source of truth; the standalone section remains
+        // for columns with NO field mapping at all (e.g. category_id).
+        $perFieldDefaults = collect($state['fields'] ?? [])
+            ->filter(fn ($row) => filled($row['target'] ?? null) && filled($row['default'] ?? null))
+            ->mapWithKeys(fn ($row) => [$row['target'] => $row['default']])
+            ->all();
+
+        $createDefaults = array_merge($state['create_defaults'] ?? [], $perFieldDefaults);
+
         $fallbackMatchFields = collect($state['fallback_match_fields'] ?? [])
             ->filter(fn ($row) => filled($row['target'] ?? null) && filled($row['source'] ?? null))
             ->values()
@@ -999,7 +1029,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'auto_generate_columns' => $state['auto_generate_columns'] ?? [],
             'fallback_match_fields' => $fallbackMatchFields,
             'fields' => $fields,
-            'create_defaults' => $state['create_defaults'] ?? [],
+            'create_defaults' => $createDefaults,
             'skip_create_if_missing_defaults' => $state['skip_create_if_missing_defaults'] ?? true,
             'category_model' => $state['category_model'] ?? null,
             'category_source' => $state['category_source'] ?? null,
