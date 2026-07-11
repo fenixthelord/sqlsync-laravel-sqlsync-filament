@@ -135,6 +135,33 @@
 
     <div style="margin-top: 12px;"></div>
 
+    {{-- ── Source number column live status — checks the ACTUAL database
+         schema, not just whether the admin typed something. This is the
+         strongest identity guarantee the Bridge offers, so its absence
+         is surfaced loudly, with copy-paste-ready SQL instead of asking
+         the admin to write ALTER TABLE by hand. ──────────────────────── --}}
+    @php($sourceNumberStatus = $this->getSourceNumberColumnStatus())
+
+    @if ($sourceNumberStatus['configured'] && !$sourceNumberStatus['exists'])
+        <div style="padding: 16px; margin-bottom: 16px; border-radius: 8px;
+            background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.35);">
+            <p style="margin: 0; font-weight: 600; color: rgb(185, 28, 28);">
+                🛑 العمود "{{ $this->data['source_number_column'] ?? '' }}" مش موجود بجدول {{ $sourceNumberStatus['table'] }} عندك بعد.
+            </p>
+            <p style="margin: 8px 0 8px 0; color: rgb(107, 114, 128); font-size: 13px;">
+                شغّل هالأمر مرة وحدة على قاعدة البيانات (phpMyAdmin أو أي أداة SQL)، وبعدها ارجع احفظ هون:
+            </p>
+            <pre style="margin: 0; padding: 10px; background: rgb(31, 41, 55); color: rgb(229, 231, 235); border-radius: 4px; direction: ltr; text-align: left; overflow-x: auto; font-size: 12px;">{{ $sourceNumberStatus['create_sql'] }}</pre>
+        </div>
+    @elseif ($sourceNumberStatus['configured'] && $sourceNumberStatus['exists'])
+        <div style="padding: 10px 16px; margin-bottom: 16px; border-radius: 8px;
+            background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3);">
+            <p style="margin: 0; color: rgb(21, 128, 61); font-weight: 600;">
+                ✓ العمود موجود بجدول {{ $sourceNumberStatus['table'] }} — الهوية الدائمة جاهزة للعمل.
+            </p>
+        </div>
+    @endif
+
     {{-- ── Form ───────────────────────────────────────────────────────── --}}
     <form wire:submit="save">
         {{ $this->form }}

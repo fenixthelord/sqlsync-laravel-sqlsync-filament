@@ -140,6 +140,54 @@ class BridgeSettingsPage extends Page implements HasForms
         return $missing;
     }
 
+    /**
+     * Checks whether the configured source_number_column actually
+     * exists on the target table — not just whether the admin typed
+     * something into the field. This is the strongest identity layer
+     * the Bridge offers, so it's enforced as a hard requirement (see
+     * save()) rather than left as an easy-to-skip optional setting.
+     *
+     * @return array{configured: bool, exists: bool, table: ?string, create_sql: ?string}
+     */
+    public function getSourceNumberColumnStatus(): array
+    {
+        $setting = BridgeSetting::current();
+        $columnName = $this->data['source_number_column'] ?? $setting->source_number_column;
+
+        if (blank($setting->target_model) || ! class_exists((string) $setting->target_model)) {
+            return ['configured' => false, 'exists' => false, 'table' => null, 'create_sql' => null];
+        }
+
+        $modelClass = $setting->target_model;
+        $model = new $modelClass;
+        $table = $model->getTable();
+
+        if (blank($columnName)) {
+            return ['configured' => false, 'exists' => false, 'table' => $table, 'create_sql' => null];
+        }
+
+        try {
+            $connection = $model->getConnectionName() ?: config('database.default');
+
+            $exists = DB::connection($connection)->selectOne(
+                'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = ?',
+                [$table, $columnName]
+            ) !== null;
+        } catch (\Throwable) {
+            return ['configured' => true, 'exists' => false, 'table' => $table, 'create_sql' => null];
+        }
+
+        $createSql = "ALTER TABLE `{$table}` ADD COLUMN `{$columnName}` VARCHAR(255) NULL, ADD INDEX (`{$columnName}`);";
+
+        return [
+            'configured' => true,
+            'exists' => $exists,
+            'table' => $table,
+            'create_sql' => $exists ? null : $createSql,
+        ];
+    }
+
     public function getDiagnosis(): ?array
     {
         $setting = BridgeSetting::current();
@@ -367,13 +415,15 @@ class BridgeSettingsPage extends Page implements HasForms
                 ])
                 ->columns(2),
 
-            Section::make('هوية دائمة (اختياري لكن موصى فيه بشدة) — الحل الأقوى لكل مشاكل الربط')
-                ->description('الباركود ممكن يتغيّر، الاسم ممكن يتعدّل، وحتى لو انمسحت بيانات SqlSync (زي Danger Zone) بيروح الربط. الحل الجذري: خزّن رقم الصنف الداخلي من برنامج المحاسبة (لا يتكرر أبداً، لا يتغيّر أبداً) مباشرة كعمود على جدول المنتجات نفسه. هيك حتى لو انمسح كل شي تبع SqlSync، أول مزامنة جاية بتلاقي نفس المنتج فوراً من غير ما تعتمد على باركود أو اسم إطلاقاً. لازم تضيف عمود جديد (نص/varchar) لجدول Products عندك أول شي — مثلاً accounting_number.')
+            Section::make('هوية دائمة (إجباري) — أهم إعداد بالصفحة كلها')
+                ->description('الباركود ممكن يتغيّر، الاسم ممكن يتعدّل، وحتى لو انمسحت بيانات SqlSync (زي Danger Zone) بيروح أي ربط مبني عليهم. الحل الوحيد المضمون: رقم الصنف الداخلي من برنامج المحاسبة (لا يتكرر أبداً، لا يتغيّر أبداً) يتخزّن مباشرة كعمود على جدول المنتجات نفسه — هيك حتى لو انمسح كل شي تبع SqlSync، أول مزامنة جاية بتلاقي نفس المنتج فوراً بدون أي اعتماد على باركود أو اسم. هاد الإعداد إجباري ولا يمكن تفعيل الربط بدونه.')
                 ->schema([
                     TextInput::make('source_number_column')
                         ->label('عمود الهوية الدائمة بجدولك')
                         ->placeholder('accounting_number')
-                        ->helperText('لازم يكون عمود موجود فعلياً بجدول Products (نص، غير إجباري أن يكون unique بقاعدة البيانات، النظام بيتحقق بنفسه).'),
+                        ->helperText('لازم يكون عمود موجود فعلياً بجدول المنتجات — النظام بيتحقق تلقائياً ويعطيك أمر الإنشاء الجاهز لو ناقص.')
+                        ->required()
+                        ->live(onBlur: true),
                 ]),
 
             Section::make('توليد Slug تلقائي وآمن (اختياري لكن موصى فيه بشدة)')
@@ -641,6 +691,56 @@ class BridgeSettingsPage extends Page implements HasForms
     public function save(): void
     {
         $state = $this->form->getState();
+
+        // Hard requirement, not just a form-level ->required() (which
+        // only checks the field isn't empty) — verify the column
+        // ACTUALLY exists on the target table before allowing save.
+        // This is the strongest identity guarantee the Bridge offers;
+        // letting an admin save with a typo'd or non-existent column
+        // name would silently degrade back to fragile barcode/name-only
+        // matching with no warning.
+        $targetModel = $state['target_model'] ?? null;
+        $sourceNumberColumn = $state['source_number_column'] ?? null;
+
+        if (blank($sourceNumberColumn)) {
+            Notification::make()
+                ->title('عمود الهوية الدائمة إجباري')
+                ->body('لازم تحدد "عمود الهوية الدائمة بجدولك" قبل ما تقدر تحفظ — هاد أهم إعداد بالصفحة، وبدونه الربط بيرجع يعتمد على باركود/اسم بس، وبيصير عرضة لنفس المشاكل يلي مرقنا فيها.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
+        if ($targetModel && class_exists($targetModel)) {
+            try {
+                $model = new $targetModel;
+                $table = $model->getTable();
+                $connection = $model->getConnectionName() ?: config('database.default');
+
+                $exists = DB::connection($connection)->selectOne(
+                    'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                     WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = ?',
+                    [$table, $sourceNumberColumn]
+                ) !== null;
+
+                if (! $exists) {
+                    Notification::make()
+                        ->title('العمود غير موجود بقاعدة البيانات')
+                        ->body("العمود \"{$sourceNumberColumn}\" مش موجود فعلياً بجدول {$table}. شوف الأمر الجاهز فوق الفورم وشغّله أولاً، وبعدها احفظ.")
+                        ->danger()
+                        ->persistent()
+                        ->send();
+
+                    return;
+                }
+            } catch (\Throwable) {
+                // Can't verify (unsupported driver, permissions) — don't
+                // block save over an inability to introspect; the admin
+                // is responsible for getting this right in that case.
+            }
+        }
 
         $fields = collect($state['fields'] ?? [])
             ->filter(fn ($row) => filled($row['target'] ?? null))
