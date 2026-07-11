@@ -121,7 +121,7 @@ class BridgeSettingsPage extends Page implements HasForms
         $covered = array_merge(
             array_keys($setting->fields ?? []),
             array_keys($setting->create_defaults ?? []),
-            array_filter([$setting->match_target, $setting->category_target_field]),
+            array_filter([$setting->match_target, $setting->category_target_field, $setting->auto_slug_column]),
             ['id', 'created_at', 'updated_at', 'deleted_at']
         );
 
@@ -202,6 +202,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'target_model' => $setting->target_model,
             'match_source' => $setting->match_source,
             'match_target' => $setting->match_target,
+            'auto_slug_column' => $setting->auto_slug_column,
             'fallback_match_fields' => $setting->fallback_match_fields ?? [],
             'fields' => collect($setting->fields ?? [])
                 ->map(fn ($source, $target) => ['target' => $target, 'source' => $source])
@@ -363,6 +364,15 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->required(),
                 ])
                 ->columns(2),
+
+            Section::make('توليد Slug تلقائي وآمن (اختياري لكن موصى فيه بشدة)')
+                ->description('لا تربط عمود slug مباشرة بحقل من البيانات المتزامنة (مثل code) — هاد الحقل غالباً فاضي لكتير أصناف أو مش unique، وبيسبب فشل إنشاء كل منتج بهالحالة (Column slug cannot be null / Duplicate entry). بدل هيك، فعّل هالخيار: بيولّد slug تلقائياً من اسم الصنف + معرّف فريد داخلي — مضمون 100% إنه مش فاضي ومش مكرر أبداً.')
+                ->schema([
+                    TextInput::make('auto_slug_column')
+                        ->label('عمود الـ slug بجدولك')
+                        ->placeholder('slug')
+                        ->helperText('لو حاطط "slug" هون بردو بقسم "تعيين الحقول" تحت، هالإعداد بيفوز دايماً — ما تحتاج تحذفه من هناك يدوياً.'),
+                ]),
 
             Section::make('مطابقة احتياطية (اختياري) — للأصناف بدون باركود')
                 ->description('لو الصنف ما عنده باركود (شائع بمواد صحية/طبية بتباع بالاسم بس)، الحقل يلي فوق (عمود المطابقة الرئيسي) بيضل فاضي وينتحجب الصنف بالكامل. هون تقدر تحدد مطابقة بديلة — مثلاً "الاسم + الماركة" — تستخدم بس لما الحقل الرئيسي فاضي. كل الحقول يلي تحددها هون لازم تتطابق مع بعضها (AND) عشان تعتبر نفس الصنف.')
@@ -620,6 +630,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'target_model' => $state['target_model'] ?? null,
             'match_source' => $state['match_source'] ?? null,
             'match_target' => $state['match_target'] ?? null,
+            'auto_slug_column' => $state['auto_slug_column'] ?? null,
             'fallback_match_fields' => $fallbackMatchFields,
             'fields' => $fields,
             'create_defaults' => $state['create_defaults'] ?? [],
