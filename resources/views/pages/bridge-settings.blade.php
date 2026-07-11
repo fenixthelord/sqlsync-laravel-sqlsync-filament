@@ -191,6 +191,89 @@
         </div>
     @endif
 
+    {{-- ── Dry run: test on a sample WITHOUT saving anything ───────────
+         Runs the exact same bridging logic against the latest 20 synced
+         records inside a transaction that always rolls back — real
+         constraint checks, zero risk. This is the answer to 'how do we
+         stop discovering problems one exception at a time after running
+         a full sync on thousands of rows' — test the actual outcome on
+         a small sample FIRST. ─────────────────────────────────────── --}}
+    <div style="margin-top: 32px;">
+        <x-filament::section icon="heroicon-o-beaker" icon-color="info">
+            <x-slot name="heading">
+                اختبار على عيّنة (بدون أي حفظ فعلي)
+            </x-slot>
+
+            <x-slot name="description">
+                يجرّب نفس منطق الربط بالضبط على آخر 20 سجل متزامَن — بما فيها محاولة كتابة حقيقية لقاعدة البيانات
+                عشان يمسك نفس أخطاء القيود (NOT NULL, UNIQUE) يلي ممكن تصير فعلياً — بس جوا معاملة (transaction) بترجع
+                لورا بالكامل. مافي أي سجل بيتغيّر أو ينحفظ. شغّلها كل مرة تعدّل فيها الإعدادات، قبل ما تعمل Reapply
+                أو Force Full Resync على آلاف السجلات.
+            </x-slot>
+
+            <div style="margin-top: 16px;">
+                <x-filament::button
+                    type="button"
+                    color="info"
+                    icon="heroicon-o-beaker"
+                    wire:click="runDryRun"
+                >
+                    اختبار الآن (بدون حفظ)
+                </x-filament::button>
+            </div>
+
+            @if ($dryRunResults !== null)
+                <div style="margin-top: 16px; max-height: 400px; overflow-y: auto; border: 1px solid rgb(229, 231, 235); border-radius: 6px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead style="background: rgba(59, 130, 246, 0.06); position: sticky; top: 0;">
+                            <tr>
+                                <th style="text-align: right; padding: 8px 12px;">الصنف</th>
+                                <th style="text-align: right; padding: 8px 12px;">النتيجة</th>
+                                <th style="text-align: right; padding: 8px 12px;">التفاصيل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($dryRunResults as $row)
+                                @php($color = match($row['action']) {
+                                    'would_create' => 'rgb(21, 128, 61)',
+                                    'would_update' => 'rgb(37, 99, 235)',
+                                    'error'        => 'rgb(185, 28, 28)',
+                                    'skipped'      => 'rgb(180, 83, 9)',
+                                    default        => 'rgb(107, 114, 128)',
+                                })
+                                @php($label = match($row['action']) {
+                                    'would_create' => '✓ رح ينخلق',
+                                    'would_update' => '✓ رح يتحدّث',
+                                    'error'        => '✖ خطأ',
+                                    'skipped'      => '⚠ تخطّي',
+                                    default        => $row['action'],
+                                })
+                                <tr style="border-bottom: 1px solid rgb(243, 244, 246);">
+                                    <td style="padding: 6px 12px;">{{ $row['record_name'] }}</td>
+                                    <td style="padding: 6px 12px; font-weight: 600; color: {{ $color }};">{{ $label }}</td>
+                                    <td style="padding: 6px 12px; font-family: monospace; direction: ltr; text-align: right; color: rgb(107, 114, 128); font-size: 12px;">
+                                        {{ $row['detail'] }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                @php($errorCount = collect($dryRunResults)->where('action', 'error')->count())
+                @if ($errorCount > 0)
+                    <p style="margin-top: 12px; color: rgb(185, 28, 28); font-weight: 600;">
+                        ⚠ {{ $errorCount }} من {{ count($dryRunResults) }} فشلوا بالاختبار — عالجهم قبل ما تشغّل مزامنة كاملة.
+                    </p>
+                @else
+                    <p style="margin-top: 12px; color: rgb(21, 128, 61); font-weight: 600;">
+                        ✓ كل العيّنة نجحت — آمن تشغّل Reapply أو Force Full Resync الآن.
+                    </p>
+                @endif
+            @endif
+        </x-filament::section>
+    </div>
+
     {{-- ── Reapply-to-existing (unchanged behavior) ─────────────────── --}}
     <div style="margin-top: 32px;">
         <x-filament::section>

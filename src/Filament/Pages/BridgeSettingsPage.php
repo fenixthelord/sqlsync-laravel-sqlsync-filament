@@ -23,6 +23,7 @@ use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Jobs\ReapplyBridgeJob;
 use SqlSync\LaravelSqlSync\Models\BridgeSetting;
 use SqlSync\LaravelSqlSync\Models\SyncedRecord;
+use SqlSync\LaravelSqlSync\Services\BridgeDryRunService;
 
 class BridgeSettingsPage extends Page implements HasForms
 {
@@ -490,6 +491,17 @@ class BridgeSettingsPage extends Page implements HasForms
                 ->label('حفظ الإعدادات')
                 ->submit('save'),
         ];
+    }
+
+    public ?array $dryRunResults = null;
+
+    public function runDryRun(): void
+    {
+        // Uses the CURRENTLY SAVED settings (whatever's in the DB right
+        // now) rather than $this->data — the admin should save any
+        // pending edits first so the dry run reflects reality, not a
+        // half-edited form state.
+        $this->dryRunResults = app(BridgeDryRunService::class)->run(20);
     }
 
     public function reapplyToExisting(): void
