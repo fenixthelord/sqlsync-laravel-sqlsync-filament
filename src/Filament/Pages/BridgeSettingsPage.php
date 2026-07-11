@@ -15,6 +15,8 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -419,196 +421,227 @@ class BridgeSettingsPage extends Page implements HasForms
         $hasData = ! empty($pathOptions);
 
         return $schema->components([
-            Section::make('التفعيل والموديل الهدف')
-                ->description('حدد موديل المنتج الخاص بمشروعك — كل مشروع بيقدر يكون مختلف كلياً.')
-                ->schema([
-                    Toggle::make('enabled')
-                        ->label('تفعيل الربط التلقائي')
-                        ->helperText('عند التفعيل، أي عنصر يتزامن من الأمين/البيان بينحدّث تلقائياً بجدول منتجاتك.'),
+            Wizard::make([
+                Step::make('start')
+                    ->label('البداية')
+                    ->icon('heroicon-o-play')
+                    ->description('فعّل الربط واختر موديل المنتج')
+                    ->schema([
+                        Toggle::make('enabled')
+                            ->label('تفعيل الربط التلقائي')
+                            ->helperText('عند التفعيل، أي عنصر يتزامن من الأمين/البيان بينحدّث تلقائياً بجدول منتجاتك.'),
 
-                    Select::make('target_model')
-                        ->label('موديل المنتج')
-                        ->options($this->getDiscoveredModels())
-                        ->searchable()
-                        ->native(false)
-                        ->required()
-                        ->live()
-                        ->helperText(empty($this->getDiscoveredModels())
-                            ? '⚠ ما قدرنا نلاقي موديلات تلقائياً بمجلد app/Models — تأكد المشروع فيه موديلات فعلاً.'
-                            : 'القائمة مبنية تلقائياً من الموديلات الموجودة فعلياً بمشروعك (app/Models).'),
-                ])
-                ->columns(1),
+                        Select::make('target_model')
+                            ->label('موديل المنتج')
+                            ->options($this->getDiscoveredModels())
+                            ->searchable()
+                            ->native(false)
+                            ->required()
+                            ->live()
+                            ->helperText(empty($this->getDiscoveredModels())
+                                ? '⚠ ما قدرنا نلاقي موديلات تلقائياً بمجلد app/Models — تأكد المشروع فيه موديلات فعلاً.'
+                                : 'القائمة مبنية تلقائياً من الموديلات الموجودة فعلياً بمشروعك (app/Models).'),
+                    ]),
 
-            Section::make('عمود المطابقة')
-                ->description('كيف بنعرف إنو هاد الصنف موجود أصلاً بجدولك؟')
-                ->schema([
-                    // Was TextInput — user had to memorize field names. Now Select
-                    // with real paths from the actual last-synced record.
-                    Select::make('match_source')
-                        ->label('الحقل بالسجل المتزامَن')
-                        ->options($pathOptions)
-                        ->searchable()
-                        ->native(false)
-                        ->helperText($hasData
-                            ? 'اختر الحقل — القيمة يمين اسم الحقل هي عيّنة من آخر سجل مزامَن.'
-                            : '⚠ لا يوجد بيانات مزامنة بعد. اربط الوكيل وقم بأول مزامنة، ثم ارجع لهذه الصفحة لتشوف الحقول المتاحة.')
-                        ->required(),
+                Step::make('identity')
+                    ->label('الهوية الدائمة')
+                    ->icon('heroicon-o-finger-print')
+                    ->description('أهم خطوة — إجبارية')
+                    ->schema([
+                        Section::make('هوية دائمة (إجباري) — أهم إعداد بالصفحة كلها')
+                            ->description('الباركود ممكن يتغيّر، الاسم ممكن يتعدّل، وحتى لو انمسحت بيانات SqlSync (زي Danger Zone) بيروح أي ربط مبني عليهم. الحل الوحيد المضمون: رقم الصنف الداخلي من برنامج المحاسبة (لا يتكرر أبداً، لا يتغيّر أبداً) يتخزّن مباشرة كعمود على جدول المنتجات نفسه — هيك حتى لو انمسح كل شي تبع SqlSync، أول مزامنة جاية بتلاقي نفس المنتج فوراً بدون أي اعتماد على باركود أو اسم. هاد الإعداد إجباري ولا يمكن تفعيل الربط بدونه.')
+                            ->schema([
+                                Select::make('source_number_column')
+                                    ->label('عمود الهوية الدائمة بجدولك')
+                                    ->options(fn () => $this->getTargetColumnOptions())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->helperText('لازم يكون عمود موجود فعلياً بجدول المنتجات — النظام بيتحقق تلقائياً ويعطيك أمر الإنشاء الجاهز لو ناقص.')
+                                    ->required()
+                                    ->live(onBlur: true),
+                            ]),
+                    ]),
 
-                    Select::make('match_target')
-                        ->label('العمود بجدولك')
-                        ->options(fn () => $this->getTargetColumnOptions())
-                        ->searchable()
-                        ->native(false)
-                        ->helperText(empty($this->getTargetColumnOptions())
-                            ? 'اختر موديل المنتج فوق أولاً عشان تظهر أعمدته هون.'
-                            : 'الأعمدة المعلّمة ⚠ إجبارية (NOT NULL بدون قيمة افتراضية) بجدولك.')
-                        ->required(),
-                ])
-                ->columns(2),
+                Step::make('matching')
+                    ->label('المطابقة')
+                    ->icon('heroicon-o-link')
+                    ->description('كيف نعرف الصنف الموجود')
+                    ->schema([
+                        Section::make('عمود المطابقة')
+                            ->description('كيف بنعرف إنو هاد الصنف موجود أصلاً بجدولك؟')
+                            ->schema([
+                                Select::make('match_source')
+                                    ->label('الحقل بالسجل المتزامَن')
+                                    ->options($pathOptions)
+                                    ->searchable()
+                                    ->native(false)
+                                    ->helperText($hasData
+                                        ? 'اختر الحقل — القيمة يمين اسم الحقل هي عيّنة من آخر سجل مزامَن.'
+                                        : '⚠ لا يوجد بيانات مزامنة بعد. اربط الوكيل وقم بأول مزامنة، ثم ارجع لهذه الصفحة لتشوف الحقول المتاحة.')
+                                    ->required(),
 
-            Section::make('هوية دائمة (إجباري) — أهم إعداد بالصفحة كلها')
-                ->description('الباركود ممكن يتغيّر، الاسم ممكن يتعدّل، وحتى لو انمسحت بيانات SqlSync (زي Danger Zone) بيروح أي ربط مبني عليهم. الحل الوحيد المضمون: رقم الصنف الداخلي من برنامج المحاسبة (لا يتكرر أبداً، لا يتغيّر أبداً) يتخزّن مباشرة كعمود على جدول المنتجات نفسه — هيك حتى لو انمسح كل شي تبع SqlSync، أول مزامنة جاية بتلاقي نفس المنتج فوراً بدون أي اعتماد على باركود أو اسم. هاد الإعداد إجباري ولا يمكن تفعيل الربط بدونه.')
-                ->schema([
-                    Select::make('source_number_column')
-                        ->label('عمود الهوية الدائمة بجدولك')
-                        ->options(fn () => $this->getTargetColumnOptions())
-                        ->searchable()
-                        ->native(false)
-                        ->helperText('لازم يكون عمود موجود فعلياً بجدول المنتجات — النظام بيتحقق تلقائياً ويعطيك أمر الإنشاء الجاهز لو ناقص.')
-                        ->required()
-                        ->live(onBlur: true),
-                ]),
+                                Select::make('match_target')
+                                    ->label('العمود بجدولك')
+                                    ->options(fn () => $this->getTargetColumnOptions())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->helperText(empty($this->getTargetColumnOptions())
+                                        ? 'اختر موديل المنتج بالخطوة الأولى عشان تظهر أعمدته هون.'
+                                        : 'الأعمدة المعلّمة ⚠ إجبارية (NOT NULL بدون قيمة افتراضية) بجدولك.')
+                                    ->required(),
+                            ])
+                            ->columns(2),
 
-            Section::make('توليد Slug تلقائي وآمن (اختياري لكن موصى فيه بشدة)')
-                ->description('لا تربط عمود slug مباشرة بحقل من البيانات المتزامنة (مثل code) — هاد الحقل غالباً فاضي لكتير أصناف أو مش unique، وبيسبب فشل إنشاء كل منتج بهالحالة (Column slug cannot be null / Duplicate entry). بدل هيك، فعّل هالخيار: بيولّد slug تلقائياً من اسم الصنف + معرّف فريد داخلي — مضمون 100% إنه مش فاضي ومش مكرر أبداً.')
-                ->schema([
-                    Select::make('auto_slug_column')
-                        ->label('عمود الـ slug بجدولك')
-                        ->options(fn () => $this->getTargetColumnOptions())
-                        ->searchable()
-                        ->native(false)
-                        ->helperText('لو حاطط "slug" هون بردو بقسم "تعيين الحقول" تحت، هالإعداد بيفوز دايماً — ما تحتاج تحذفه من هناك يدوياً.'),
-                ]),
+                        Section::make('مطابقة احتياطية (اختياري) — للأصناف بدون باركود')
+                            ->description('لو الصنف ما عنده باركود (شائع بمواد صحية/طبية بتباع بالاسم بس)، الحقل يلي فوق (عمود المطابقة الرئيسي) بيضل فاضي وينتحجب الصنف بالكامل. هون تقدر تحدد مطابقة بديلة — مثلاً "الاسم + الماركة" — تستخدم بس لما الحقل الرئيسي فاضي. كل الحقول يلي تحددها هون لازم تتطابق مع بعضها (AND) عشان تعتبر نفس الصنف.')
+                            ->schema([
+                                Repeater::make('fallback_match_fields')
+                                    ->label('')
+                                    ->schema([
+                                        TextInput::make('target')
+                                            ->label('العمود بجدولك')
+                                            ->placeholder('name')
+                                            ->helperText('مثلاً name أو brand')
+                                            ->required(),
 
-            Section::make('مطابقة احتياطية (اختياري) — للأصناف بدون باركود')
-                ->description('لو الصنف ما عنده باركود (شائع بمواد صحية/طبية بتباع بالاسم بس)، الحقل يلي فوق (عمود المطابقة الرئيسي) بيضل فاضي وينتحجب الصنف بالكامل. هون تقدر تحدد مطابقة بديلة — مثلاً "الاسم + الماركة" — تستخدم بس لما الحقل الرئيسي فاضي. كل الحقول يلي تحددها هون لازم تتطابق مع بعضها (AND) عشان تعتبر نفس الصنف.')
-                ->schema([
-                    Repeater::make('fallback_match_fields')
-                        ->label('')
-                        ->schema([
-                            TextInput::make('target')
-                                ->label('العمود بجدولك')
-                                ->placeholder('name')
-                                ->helperText('مثلاً name أو brand')
-                                ->required(),
+                                        Select::make('source')
+                                            ->label('الحقل بالسجل المتزامَن')
+                                            ->options($pathOptions)
+                                            ->searchable()
+                                            ->native(false)
+                                            ->helperText($hasData
+                                                ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
+                                                : '⚠ لا يوجد بيانات بعد')
+                                            ->required(),
+                                    ])
+                                    ->columns(2)
+                                    ->addActionLabel('إضافة حقل للمطابقة الاحتياطية')
+                                    ->reorderable(false)
+                                    ->helperText('مثال شائع للصيدليات: name ← name  و  brand ← extra_data.origin')
+                                    ->itemLabel(function (array $state): ?string {
+                                        if (! filled($state['target'] ?? null) || ! filled($state['source'] ?? null)) {
+                                            return null;
+                                        }
 
-                            Select::make('source')
-                                ->label('الحقل بالسجل المتزامَن')
-                                ->options($pathOptions)
-                                ->searchable()
-                                ->native(false)
-                                ->helperText($hasData
-                                    ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
-                                    : '⚠ لا يوجد بيانات بعد')
-                                ->required(),
-                        ])
-                        ->columns(2)
-                        ->addActionLabel('إضافة حقل للمطابقة الاحتياطية')
-                        ->reorderable(false)
-                        ->helperText('مثال شائع للصيدليات: name ← name  و  brand ← extra_data.origin')
-                        ->itemLabel(function (array $state): ?string {
-                            if (! filled($state['target'] ?? null) || ! filled($state['source'] ?? null)) {
-                                return null;
-                            }
+                                        return $state['target'].' = '.$state['source'];
+                                    }),
+                            ]),
+                    ]),
 
-                            return $state['target'].' = '.$state['source'];
-                        }),
-                ]),
+                Step::make('fields')
+                    ->label('تعيين الحقول')
+                    ->icon('heroicon-o-table-cells')
+                    ->description('السعر، الكمية، الاسم...')
+                    ->schema([
+                        Section::make('تعيين الحقول (Field Mapping)')
+                            ->description('أي أعمدة بجدولك بدك تنحدّث تلقائياً، ومن وين تجيب قيمتها. القيمة المعروضة بجانب الحقل هي القيمة الفعلية من آخر مزامنة — بتقدر تتأكد إنك عم تربط الحقل الصح قبل ما تحفظ.')
+                            ->schema([
+                                Repeater::make('fields')
+                                    ->label('')
+                                    ->schema([
+                                        TextInput::make('target')
+                                            ->label('العمود بجدولك')
+                                            ->placeholder('price')
+                                            ->helperText('اسم العمود في جدول المنتجات عندك')
+                                            ->required(),
 
-            Section::make('تعيين الحقول (Field Mapping)')
-                ->description('أي أعمدة بجدولك بدك تنحدّث تلقائياً، ومن وين تجيب قيمتها. القيمة المعروضة بجانب الحقل هي القيمة الفعلية من آخر مزامنة — بتقدر تتأكد إنك عم تربط الحقل الصح قبل ما تحفظ.')
-                ->schema([
-                    Repeater::make('fields')
-                        ->label('')
-                        ->schema([
-                            TextInput::make('target')
-                                ->label('العمود بجدولك')
-                                ->placeholder('price')
-                                ->helperText('اسم العمود في جدول المنتجات عندك')
-                                ->required(),
+                                        Select::make('source')
+                                            ->label('الحقل بالسجل المتزامَن')
+                                            ->options($pathOptions)
+                                            ->searchable()
+                                            ->native(false)
+                                            ->helperText($hasData
+                                                ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
+                                                : '⚠ لا يوجد بيانات بعد — اربط الوكيل أولاً')
+                                            ->required(),
+                                    ])
+                                    ->columns(2)
+                                    ->addActionLabel('إضافة حقل')
+                                    ->reorderable(false)
+                                    ->itemLabel(function (array $state): ?string {
+                                        if (! filled($state['target'] ?? null) || ! filled($state['source'] ?? null)) {
+                                            return null;
+                                        }
 
-                            Select::make('source')
-                                ->label('الحقل بالسجل المتزامَن')
-                                ->options($pathOptions)
-                                ->searchable()
-                                ->native(false)
-                                ->helperText($hasData
-                                    ? 'القيمة بجانب الحقل عيّنة حقيقية من آخر مزامنة'
-                                    : '⚠ لا يوجد بيانات بعد — اربط الوكيل أولاً')
-                                ->required(),
-                        ])
-                        ->columns(2)
-                        ->addActionLabel('إضافة حقل')
-                        ->reorderable(false)
-                        // Nice collapsed label so the user can see all their
-                        // mappings at a glance: "price ← extra_data.sel_price"
-                        ->itemLabel(function (array $state): ?string {
-                            if (! filled($state['target'] ?? null) || ! filled($state['source'] ?? null)) {
-                                return null;
-                            }
+                                        return $state['target'].' ← '.$state['source'];
+                                    }),
+                            ]),
 
-                            return $state['target'].' ← '.$state['source'];
-                        }),
-                ]),
+                        Section::make('توليد Slug تلقائي وآمن (اختياري لكن موصى فيه بشدة)')
+                            ->description('لا تربط عمود slug مباشرة بحقل من البيانات المتزامنة (مثل code) — هاد الحقل غالباً فاضي لكتير أصناف أو مش unique، وبيسبب فشل إنشاء كل منتج بهالحالة (Column slug cannot be null / Duplicate entry). بدل هيك، فعّل هالخيار: بيولّد slug تلقائياً من اسم الصنف + معرّف فريد داخلي — مضمون 100% إنه مش فاضي ومش مكرر أبداً.')
+                            ->schema([
+                                Select::make('auto_slug_column')
+                                    ->label('عمود الـ slug بجدولك')
+                                    ->options(fn () => $this->getTargetColumnOptions())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->helperText('لو حاطط "slug" هون بردو بقسم "تعيين الحقول" فوق، هالإعداد بيفوز دايماً — ما تحتاج تحذفه من هناك يدوياً.'),
+                            ]),
+                    ]),
 
-            Section::make('التصنيف التلقائي (اختياري)')
-                ->description('لو صنف جديد جاي بفئة (مثل "أدوات وصيانة") مش موجودة بجدول الفئات عندك، بتنشأ تلقائياً وبتترابط بالمنتج — بدل ما تعلّق عملية الإنشاء بسبب حقل category_id الإجباري.')
-                ->schema([
-                    TextInput::make('category_model')
-                        ->label('اسم الـ Model بالكامل')
-                        ->placeholder('App\\Models\\Category'),
+                Step::make('category')
+                    ->label('التصنيف')
+                    ->icon('heroicon-o-tag')
+                    ->description('اختياري')
+                    ->schema([
+                        Section::make('التصنيف التلقائي (اختياري)')
+                            ->description('لو صنف جديد جاي بفئة (مثل "أدوات وصيانة") مش موجودة بجدول الفئات عندك، بتنشأ تلقائياً وبتترابط بالمنتج — بدل ما تعلّق عملية الإنشاء بسبب حقل category_id الإجباري.')
+                            ->schema([
+                                TextInput::make('category_model')
+                                    ->label('اسم الـ Model بالكامل')
+                                    ->placeholder('App\\Models\\Category'),
 
-                    Select::make('category_source')
-                        ->label('الحقل بالسجل المتزامَن')
-                        ->options($pathOptions)
-                        ->searchable()
-                        ->native(false)
-                        ->placeholder('اختر الحقل يلي بيحدد اسم الفئة')
-                        ->helperText('لبرنامج البيان: هاد الحقل هو group_guid (رقم التصنيف الشجري الخام — مش اسم مباشر).'),
+                                Select::make('category_source')
+                                    ->label('الحقل بالسجل المتزامَن')
+                                    ->options($pathOptions)
+                                    ->searchable()
+                                    ->native(false)
+                                    ->placeholder('اختر الحقل يلي بيحدد اسم الفئة')
+                                    ->helperText('لبرنامج البيان: هاد الحقل هو group_guid (رقم التصنيف الشجري الخام — مش اسم مباشر).'),
 
-                    Toggle::make('category_use_tree_resolution')
-                        ->label('التصنيف شجري (Tree) مو اسم مباشر')
-                        ->helperText('فعّلها لو الحقل يلي فوق رقم من شجرة تصنيف هرمية (مثل TreeNum بالبيان: 117185) بدل اسم صريح. النظام رح يدور تلقائياً على أقرب تصنيف أب مطابق بالشجرة المتزامنة (117 → اسم التصنيف)، ويستخدم اسمه الحقيقي بدل الرقم الخام.'),
+                                Toggle::make('category_use_tree_resolution')
+                                    ->label('التصنيف شجري (Tree) مو اسم مباشر')
+                                    ->helperText('فعّلها لو الحقل يلي فوق رقم من شجرة تصنيف هرمية (مثل TreeNum بالبيان: 117185) بدل اسم صريح. النظام رح يدور تلقائياً على أقرب تصنيف أب مطابق بالشجرة المتزامنة (117 → اسم التصنيف)، ويستخدم اسمه الحقيقي بدل الرقم الخام.'),
 
-                    TextInput::make('category_match_column')
-                        ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
-                        ->placeholder('name'),
+                                TextInput::make('category_match_column')
+                                    ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
+                                    ->placeholder('name'),
 
-                    Select::make('category_target_field')
-                        ->label('العمود بجدول المنتجات يلي بياخد معرّف الفئة')
-                        ->options(fn () => $this->getTargetColumnOptions())
-                        ->searchable()
-                        ->native(false),
+                                Select::make('category_target_field')
+                                    ->label('العمود بجدول المنتجات يلي بياخد معرّف الفئة')
+                                    ->options(fn () => $this->getTargetColumnOptions())
+                                    ->searchable()
+                                    ->native(false),
 
-                    TextInput::make('category_slug_column')
-                        ->label('عمود الـ slug بجدول الفئات (اتركه فاضي إذا مافي)')
-                        ->placeholder('slug'),
-                ])
-                ->columns(2),
+                                TextInput::make('category_slug_column')
+                                    ->label('عمود الـ slug بجدول الفئات (اتركه فاضي إذا مافي)')
+                                    ->placeholder('slug'),
+                            ])
+                            ->columns(2),
+                    ]),
 
-            Section::make('قيم افتراضية عند إنشاء منتج جديد')
-                ->description('لو الصنف مش موجود أصلاً بجدولك، وعندك أعمدة إجبارية (متل category_id)، حدد قيمة افتراضية هون. اتركها فاضية إذا ما في قيمة آمنة — هيك ما رح ينعمل إنشاء تلقائي وبتضل تراجعه يدوياً.')
-                ->schema([
-                    KeyValue::make('create_defaults')
-                        ->label('')
-                        ->keyLabel('العمود')
-                        ->valueLabel('القيمة الافتراضية')
-                        ->addActionLabel('إضافة قيمة افتراضية'),
+                Step::make('defaults')
+                    ->label('القيم الافتراضية')
+                    ->icon('heroicon-o-check-circle')
+                    ->description('آخر خطوة')
+                    ->schema([
+                        Section::make('قيم افتراضية عند إنشاء منتج جديد')
+                            ->description('لو الصنف مش موجود أصلاً بجدولك، وعندك أعمدة إجبارية (متل category_id)، حدد قيمة افتراضية هون. اتركها فاضية إذا ما في قيمة آمنة — هيك ما رح ينعمل إنشاء تلقائي وبتضل تراجعه يدوياً.')
+                            ->schema([
+                                KeyValue::make('create_defaults')
+                                    ->label('')
+                                    ->keyLabel('العمود')
+                                    ->valueLabel('القيمة الافتراضية')
+                                    ->addActionLabel('إضافة قيمة افتراضية'),
 
-                    Toggle::make('skip_create_if_missing_defaults')
-                        ->label('تجاهل الإنشاء التلقائي إذا نقصت قيمة افتراضية إجبارية')
-                        ->default(true),
-                ]),
+                                Toggle::make('skip_create_if_missing_defaults')
+                                    ->label('تجاهل الإنشاء التلقائي إذا نقصت قيمة افتراضية إجبارية')
+                                    ->default(true),
+                            ]),
+                    ]),
+            ])
+                ->skippable()
+                ->persistStepInQueryString(),
         ])->statePath('data');
     }
 
