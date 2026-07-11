@@ -122,7 +122,7 @@ class BridgeSettingsPage extends Page implements HasForms
         $covered = array_merge(
             array_keys($setting->fields ?? []),
             array_keys($setting->create_defaults ?? []),
-            array_filter([$setting->match_target, $setting->category_target_field, $setting->auto_slug_column]),
+            array_filter([$setting->match_target, $setting->category_target_field, $setting->auto_slug_column, $setting->source_number_column]),
             ['id', 'created_at', 'updated_at', 'deleted_at']
         );
 
@@ -204,6 +204,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'match_source' => $setting->match_source,
             'match_target' => $setting->match_target,
             'auto_slug_column' => $setting->auto_slug_column,
+            'source_number_column' => $setting->source_number_column,
             'fallback_match_fields' => $setting->fallback_match_fields ?? [],
             'fields' => collect($setting->fields ?? [])
                 ->map(fn ($source, $target) => ['target' => $target, 'source' => $source])
@@ -365,6 +366,15 @@ class BridgeSettingsPage extends Page implements HasForms
                         ->required(),
                 ])
                 ->columns(2),
+
+            Section::make('هوية دائمة (اختياري لكن موصى فيه بشدة) — الحل الأقوى لكل مشاكل الربط')
+                ->description('الباركود ممكن يتغيّر، الاسم ممكن يتعدّل، وحتى لو انمسحت بيانات SqlSync (زي Danger Zone) بيروح الربط. الحل الجذري: خزّن رقم الصنف الداخلي من برنامج المحاسبة (لا يتكرر أبداً، لا يتغيّر أبداً) مباشرة كعمود على جدول المنتجات نفسه. هيك حتى لو انمسح كل شي تبع SqlSync، أول مزامنة جاية بتلاقي نفس المنتج فوراً من غير ما تعتمد على باركود أو اسم إطلاقاً. لازم تضيف عمود جديد (نص/varchar) لجدول Products عندك أول شي — مثلاً accounting_number.')
+                ->schema([
+                    TextInput::make('source_number_column')
+                        ->label('عمود الهوية الدائمة بجدولك')
+                        ->placeholder('accounting_number')
+                        ->helperText('لازم يكون عمود موجود فعلياً بجدول Products (نص، غير إجباري أن يكون unique بقاعدة البيانات، النظام بيتحقق بنفسه).'),
+                ]),
 
             Section::make('توليد Slug تلقائي وآمن (اختياري لكن موصى فيه بشدة)')
                 ->description('لا تربط عمود slug مباشرة بحقل من البيانات المتزامنة (مثل code) — هاد الحقل غالباً فاضي لكتير أصناف أو مش unique، وبيسبب فشل إنشاء كل منتج بهالحالة (Column slug cannot be null / Duplicate entry). بدل هيك، فعّل هالخيار: بيولّد slug تلقائياً من اسم الصنف + معرّف فريد داخلي — مضمون 100% إنه مش فاضي ومش مكرر أبداً.')
@@ -649,6 +659,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'match_source' => $state['match_source'] ?? null,
             'match_target' => $state['match_target'] ?? null,
             'auto_slug_column' => $state['auto_slug_column'] ?? null,
+            'source_number_column' => $state['source_number_column'] ?? null,
             'fallback_match_fields' => $fallbackMatchFields,
             'fields' => $fields,
             'create_defaults' => $state['create_defaults'] ?? [],
