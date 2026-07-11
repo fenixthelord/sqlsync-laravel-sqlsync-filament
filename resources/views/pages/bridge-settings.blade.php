@@ -242,7 +242,7 @@
                                     default        => 'rgb(107, 114, 128)',
                                 })
                                 @php($label = match($row['action']) {
-                                    'would_create' => '✓ رح ينخلق',
+                                    'would_create' => '✓ رح يُنشأ',
                                     'would_update' => '✓ رح يتحدّث',
                                     'error'        => '✖ خطأ',
                                     'skipped'      => '⚠ تخطّي',
