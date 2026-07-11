@@ -311,6 +311,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'category_model' => $setting->category_model,
             'category_source' => $setting->category_source,
             'category_use_tree_resolution' => $setting->category_use_tree_resolution ?? false,
+            'category_reresolve_on_update' => $setting->category_reresolve_on_update ?? false,
             'category_match_column' => $setting->category_match_column,
             'category_target_field' => $setting->category_target_field,
             'category_slug_column' => $setting->category_slug_column,
@@ -616,6 +617,10 @@ class BridgeSettingsPage extends Page implements HasForms
                                 Toggle::make('category_use_tree_resolution')
                                     ->label('التصنيف شجري (Tree) مو اسم مباشر')
                                     ->helperText('فعّلها لو الحقل يلي فوق رقم من شجرة تصنيف هرمية (مثل TreeNum بالبيان: 117185) بدل اسم صريح. النظام رح يدور تلقائياً على أقرب تصنيف أب مطابق بالشجرة المتزامنة (117 → اسم التصنيف)، ويستخدم اسمه الحقيقي بدل الرقم الخام.'),
+
+                                Toggle::make('category_reresolve_on_update')
+                                    ->label('تحديث التصنيف تلقائياً كل مزامنة')
+                                    ->helperText('افتراضياً مطفية: تصنيف المنتج بيتحدد مرة وحدة بس عند الإنشاء، وما بيتغيّر بعدها أبداً — حماية لأي تعديل يدوي تعمله على تصنيف منتج بالموقع. فعّلها بس لو بدك الموقع يعكس تصنيف البرنامج المحاسبي الحالي دايماً، وما بتعمل تعديلات تصنيف يدوية بالموقع.'),
 
                                 TextInput::make('category_match_column')
                                     ->label('العمود بجدول الفئات للمطابقة/الإنشاء')
@@ -1034,6 +1039,7 @@ class BridgeSettingsPage extends Page implements HasForms
             'category_model' => $state['category_model'] ?? null,
             'category_source' => $state['category_source'] ?? null,
             'category_use_tree_resolution' => $state['category_use_tree_resolution'] ?? false,
+            'category_reresolve_on_update' => $state['category_reresolve_on_update'] ?? false,
             'category_match_column' => $state['category_match_column'] ?? null,
             'category_target_field' => $state['category_target_field'] ?? null,
             'category_slug_column' => $state['category_slug_column'] ?? null,
