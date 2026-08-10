@@ -9,6 +9,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use SqlSync\FilamentSqlSync\Filament\Resources\AccountingCurrencyResource\Pages\ListAccountingCurrencies;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 use SqlSync\LaravelSqlSync\Models\AccountingCurrency;
@@ -42,6 +43,17 @@ class AccountingCurrencyResource extends Resource
     {
         return SqlSyncFilamentPlugin::get()->isAuthorized()
             && SqlSyncFilamentPlugin::get()->isFeatureEnabled('accounting');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if ($fn = SqlSyncFilamentPlugin::get()->getAccountingQuery()) {
+            $query = $fn($query);
+        }
+
+        return $query;
     }
 
     public static function canCreate(): bool
