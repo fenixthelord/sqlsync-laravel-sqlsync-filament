@@ -41,6 +41,8 @@ class SqlSyncFilamentPlugin implements Plugin
 
     protected ?Closure $mappingsQuery = null;
 
+    protected ?Closure $accountingQuery = null;
+
     protected ?bool $showMappings = null;
 
     protected ?bool $showBridge = null;
@@ -138,6 +140,13 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this;
     }
 
+    public function modifyAccountingQueryUsing(Closure $callback): static
+    {
+        $this->accountingQuery = $callback;
+
+        return $this;
+    }
+
     public function statsCacheKeyUsing(Closure $callback): static
     {
         $this->statsCacheKeyCallback = $callback;
@@ -173,6 +182,11 @@ class SqlSyncFilamentPlugin implements Plugin
     public function getLogsQuery(): ?Closure
     {
         return $this->logsQuery;
+    }
+
+    public function getAccountingQuery(): ?Closure
+    {
+        return $this->accountingQuery;
     }
 
     public function shouldCacheStats(): bool
