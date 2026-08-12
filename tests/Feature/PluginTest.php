@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Eloquent\Builder;
 use SqlSync\FilamentSqlSync\SqlSyncFilamentPlugin;
 
 it('creates a plugin instance via make()', function (): void {
@@ -13,12 +14,28 @@ it('has the correct plugin id', function (): void {
     expect(SqlSyncFilamentPlugin::make()->getId())->toBe('sqlsync');
 });
 
-it('enables all features by default', function (): void {
+it('enables legacy features by default', function (): void {
     $plugin = SqlSyncFilamentPlugin::make();
     expect($plugin->isFeatureEnabled('dashboard'))->toBeTrue();
     expect($plugin->isFeatureEnabled('records'))->toBeTrue();
     expect($plugin->isFeatureEnabled('agents'))->toBeTrue();
     expect($plugin->isFeatureEnabled('logs'))->toBeTrue();
+});
+
+it('keeps accounting resources opt-in by default', function (): void {
+    config()->set('sqlsync-filament.features.accounting', false);
+
+    $plugin = SqlSyncFilamentPlugin::make();
+    expect($plugin->isFeatureEnabled('accounting'))->toBeFalse();
+    expect($plugin->withAccounting(true)->isFeatureEnabled('accounting'))->toBeTrue();
+});
+
+it('stores one accounting query scope hook for all accounting resources', function (): void {
+    $callback = static fn (Builder $query): Builder => $query->where('company_id', 42);
+
+    $plugin = SqlSyncFilamentPlugin::make()->modifyAccountingQueryUsing($callback);
+
+    expect($plugin->getAccountingQuery())->toBe($callback);
 });
 
 it('disables features via fluent api', function (): void {

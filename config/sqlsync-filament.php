@@ -26,6 +26,10 @@ return [
         'logs' => true,
         'mappings' => false,
         'bridge' => true,
+        // Read-only canonical accounting truth. Off by default until the
+        // matching sqlsync/laravel-sqlsync release is installed.
+        // Enable via config or: ->withAccounting(true)
+        'accounting' => false,
         // Off by default — this page permanently deletes SqlSync data
         // (and optionally your Products table). Enable deliberately:
         //   'reset' => true,

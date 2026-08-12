@@ -11,6 +11,9 @@ use Filament\Panel;
 use SqlSync\FilamentSqlSync\Filament\Pages\BridgeSettingsPage;
 use SqlSync\FilamentSqlSync\Filament\Pages\ResetPage;
 use SqlSync\FilamentSqlSync\Filament\Pages\SqlSyncDashboard;
+use SqlSync\FilamentSqlSync\Filament\Resources\AccountingCurrencyResource\AccountingCurrencyResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\AccountingPriceOfferResource\AccountingPriceOfferResource;
+use SqlSync\FilamentSqlSync\Filament\Resources\AccountingProductCurrencyBindingResource\AccountingProductCurrencyBindingResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\AgentResource\AgentResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\BridgeLogResource\BridgeLogResource;
 use SqlSync\FilamentSqlSync\Filament\Resources\FieldMappingResource\FieldMappingResource;
@@ -38,9 +41,13 @@ class SqlSyncFilamentPlugin implements Plugin
 
     protected ?Closure $mappingsQuery = null;
 
+    protected ?Closure $accountingQuery = null;
+
     protected ?bool $showMappings = null;
 
     protected ?bool $showBridge = null;
+
+    protected ?bool $showAccounting = null;
 
     protected ?bool $showReset = null;
 
@@ -133,6 +140,13 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this;
     }
 
+    public function modifyAccountingQueryUsing(Closure $callback): static
+    {
+        $this->accountingQuery = $callback;
+
+        return $this;
+    }
+
     public function statsCacheKeyUsing(Closure $callback): static
     {
         $this->statsCacheKeyCallback = $callback;
@@ -170,6 +184,11 @@ class SqlSyncFilamentPlugin implements Plugin
         return $this->logsQuery;
     }
 
+    public function getAccountingQuery(): ?Closure
+    {
+        return $this->accountingQuery;
+    }
+
     public function shouldCacheStats(): bool
     {
         if ($this->statsCacheKeyCallback !== null) {
@@ -199,6 +218,10 @@ class SqlSyncFilamentPlugin implements Plugin
             'logs' => $this->showLogs ?? (bool) config('sqlsync-filament.features.logs', true),
             'mappings' => $this->showMappings ?? (bool) config('sqlsync-filament.features.mappings', true),
             'bridge' => $this->showBridge ?? (bool) config('sqlsync-filament.features.bridge', true),
+            // Accounting resources are read-only and require the canonical
+            // accounting models introduced by the matching base-package release.
+            // Keep this off by default so older ^1.0 package installs remain safe.
+            'accounting' => $this->showAccounting ?? (bool) config('sqlsync-filament.features.accounting', false),
             // Defaults to false, unlike every other feature — this page
             // permanently deletes data, so it must be an explicit
             // opt-in via ->withReset(true) or config, never on by
@@ -234,6 +257,12 @@ class SqlSyncFilamentPlugin implements Plugin
             $resources[] = BridgeLogResource::class;
         }
 
+        if ($this->isFeatureEnabled('accounting')) {
+            $resources[] = AccountingCurrencyResource::class;
+            $resources[] = AccountingProductCurrencyBindingResource::class;
+            $resources[] = AccountingPriceOfferResource::class;
+        }
+
         if ($this->isFeatureEnabled('reset')) {
             $pages[] = ResetPage::class;
         }
@@ -260,6 +289,13 @@ class SqlSyncFilamentPlugin implements Plugin
     public function withBridge(bool $show = true): static
     {
         $this->showBridge = $show;
+
+        return $this;
+    }
+
+    public function withAccounting(bool $show = true): static
+    {
+        $this->showAccounting = $show;
 
         return $this;
     }
